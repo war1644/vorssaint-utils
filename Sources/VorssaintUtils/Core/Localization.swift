@@ -121,6 +121,7 @@ struct Strings {
     let tabMouse: String
     let tabSwitcher: String
     let tabAbout: String
+    let settingsGroupFeatures: String
 
     // MARK: Settings — general
     let launchAtLogin: String
@@ -308,6 +309,7 @@ extension Strings {
         tabMouse: "Mouse",
         tabSwitcher: "Alternador",
         tabAbout: "Sobre",
+        settingsGroupFeatures: "Recursos",
 
         launchAtLogin: "Iniciar junto com o Mac",
         languageLabel: "Idioma",
@@ -486,6 +488,7 @@ extension Strings {
         tabMouse: "Mouse",
         tabSwitcher: "Switcher",
         tabAbout: "About",
+        settingsGroupFeatures: "Features",
 
         launchAtLogin: "Launch at login",
         languageLabel: "Language",

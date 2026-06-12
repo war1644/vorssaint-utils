@@ -1,23 +1,53 @@
 import ServiceManagement
 import SwiftUI
 
+/// One entry in the Settings sidebar. New features add a case here and a row in
+/// the Features section, so every feature gets its own page.
+enum SettingsPage: Hashable {
+    case general, energy
+    case mouse, switcher
+    case about
+}
+
+/// System-Settings-style window: a sidebar of pages on the left, the selected
+/// page on the right. Scales cleanly as features are added, and gives each
+/// feature a page of its own with room for examples and advanced options.
 struct SettingsView: View {
     @ObservedObject private var l10n = L10n.shared
+    @State private var page: SettingsPage = .general
 
     var body: some View {
-        TabView {
-            GeneralSettings()
-                .tabItem { Label(l10n.s.tabGeneral, systemImage: "gearshape") }
-            EnergySettings()
-                .tabItem { Label(l10n.s.tabEnergy, systemImage: "bolt.fill") }
-            MouseSettings()
-                .tabItem { Label(l10n.s.tabMouse, systemImage: "computermouse") }
-            SwitcherSettings()
-                .tabItem { Label(l10n.s.tabSwitcher, systemImage: "rectangle.on.rectangle") }
-            AboutSettings()
-                .tabItem { Label(l10n.s.tabAbout, systemImage: "info.circle") }
+        NavigationSplitView {
+            List(selection: $page) {
+                Label(l10n.s.tabGeneral, systemImage: "gearshape").tag(SettingsPage.general)
+                Label(l10n.s.tabEnergy, systemImage: "bolt.fill").tag(SettingsPage.energy)
+
+                Section(l10n.s.settingsGroupFeatures) {
+                    Label(l10n.s.tabMouse, systemImage: "computermouse").tag(SettingsPage.mouse)
+                    Label(l10n.s.tabSwitcher, systemImage: "rectangle.on.rectangle").tag(SettingsPage.switcher)
+                }
+
+                Label(l10n.s.tabAbout, systemImage: "info.circle").tag(SettingsPage.about)
+            }
+            .listStyle(.sidebar)
+            .navigationSplitViewColumnWidth(min: 198, ideal: 210, max: 240)
+        } detail: {
+            detail
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .frame(width: 460, height: 440)
+        .navigationSplitViewStyle(.balanced)
+        .frame(width: 772, height: 528)
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        switch page {
+        case .general: GeneralSettings()
+        case .energy: EnergySettings()
+        case .mouse: MouseSettings()
+        case .switcher: SwitcherSettings()
+        case .about: AboutSettings()
+        }
     }
 }
 
