@@ -13,6 +13,10 @@ struct MixerApp: Identifiable, Equatable {
     let ownerPid: pid_t
     let name: String
     let audioObjects: [AudioObjectID]
+    /// True while the app is actually emitting sound right now (shown as a
+    /// live indicator). Apps appear in the mixer even when momentarily silent,
+    /// as long as they hold an audio connection.
+    let isPlaying: Bool
     var volume: Double
 }
 
@@ -156,6 +160,7 @@ final class AppVolumeMixer: ObservableObject {
         let saved = savedVolumes()
 
         var groups: [pid_t: [AudioObjectID]] = [:]
+        var playing: Set<pid_t> = []
         var bundleHints: [pid_t: String] = [:]
         for object in Self.audioProcessObjects() {
             // Audio starting/stopping in a process flips IsRunningOutput
@@ -164,15 +169,21 @@ final class AppVolumeMixer: ObservableObject {
 
             var pid: pid_t = -1
             guard Self.read(object, kAudioProcessPropertyPID, &pid), pid > 0, pid != ownPid else { continue }
+
+            // Show every regular app that holds an audio connection, not only
+            // the ones making sound this instant — so Discord, Safari, etc.
+            // are adjustable before they play, and stay put between sounds.
+            let owner = ResponsibleProcess.owner(of: pid)
+            guard let app = NSRunningApplication(processIdentifier: owner),
+                  app.activationPolicy == .regular else { continue }
+
             var running: UInt32 = 0
             _ = Self.read(object, kAudioProcessPropertyIsRunningOutput, &running)
-            guard running != 0 else { continue }
+            if running != 0 { playing.insert(owner) }
 
-            let owner = ResponsibleProcess.owner(of: pid)
             groups[owner, default: []].append(object)
-            if bundleHints[owner] == nil,
-               let bundle = NSRunningApplication(processIdentifier: owner)?.bundleIdentifier {
-                bundleHints[owner] = bundle
+            if bundleHints[owner] == nil {
+                bundleHints[owner] = app.bundleIdentifier
             }
         }
 
@@ -184,6 +195,7 @@ final class AppVolumeMixer: ObservableObject {
                                  ownerPid: owner,
                                  name: name,
                                  audioObjects: objects.sorted(),
+                                 isPlaying: playing.contains(owner),
                                  volume: saved[id] ?? 1))
         }
         next.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }

@@ -56,9 +56,17 @@ private struct MixerRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(nsImage: ResponsibleProcess.icon(for: app.ownerPid))
-                .resizable()
-                .frame(width: 18, height: 18)
+            ZStack(alignment: .bottomTrailing) {
+                Image(nsImage: ResponsibleProcess.icon(for: app.ownerPid))
+                    .resizable()
+                    .frame(width: 18, height: 18)
+                if app.isPlaying {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 6, height: 6)
+                        .overlay(Circle().stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 1))
+                }
+            }
 
             Text(app.name)
                 .font(.system(size: 11.5))
