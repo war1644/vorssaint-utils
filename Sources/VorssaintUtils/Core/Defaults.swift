@@ -18,6 +18,8 @@ enum DefaultsKey {
     static let autoCheckUpdates = "autoCheckUpdates"
     static let appVolumes = "appVolumes"                  // [bundle id: 0...1]
     static let finderCutPasteEnabled = "finderCutPasteEnabled"
+    static let autoQuitEnabled = "autoQuitEnabled"
+    static let autoQuitExceptions = "autoQuitExceptions"  // [bundle id] kept running
 }
 
 enum Defaults {
@@ -33,6 +35,9 @@ enum Defaults {
             DefaultsKey.switcherEnabled: true,
             DefaultsKey.switcherShowBrowserTabs: true,
             DefaultsKey.autoCheckUpdates: true,
+            // Finder never benefits from being "quit" (it just relaunches), so
+            // it's excepted out of the box.
+            DefaultsKey.autoQuitExceptions: ["com.apple.finder"],
         ])
     }
 }

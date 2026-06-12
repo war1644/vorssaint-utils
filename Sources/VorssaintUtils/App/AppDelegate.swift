@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         ScrollInverter.shared.syncWithPreferences()
         AppSwitcher.shared.syncWithPreferences()
         FinderCutPaste.shared.syncWithPreferences()
+        AutoQuitService.shared.syncWithPreferences()
         AppVolumeMixer.shared.start()
         UpdateService.shared.startAutomaticChecks()
 
@@ -43,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
                 ScrollInverter.shared.syncWithPreferences()
                 AppSwitcher.shared.syncWithPreferences()
                 FinderCutPaste.shared.syncWithPreferences()
+                AutoQuitService.shared.syncWithPreferences()
             }
             .store(in: &cancellables)
 

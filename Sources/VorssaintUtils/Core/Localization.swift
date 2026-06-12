@@ -179,6 +179,20 @@ struct Strings {
     let cutMovedPluralFormat: String      // + count
     let cutSomeFailed: String
 
+    // MARK: Feature — quit on last window close
+    let autoQuitName: String
+    let autoQuitEnable: String
+    let autoQuitEnableCaption: String
+    let autoQuitActiveNow: String
+    let autoQuitHowTitle: String
+    let autoQuitStep1: String
+    let autoQuitStep2: String
+    let autoQuitPredictableNote: String
+    let autoQuitExceptionsTitle: String
+    let autoQuitExceptionsCaption: String
+    let autoQuitExceptionsEmpty: String
+    let autoQuitAddApp: String
+
     // MARK: Panel — per-app breakdown
     let breakdownMeasuring: String
 
@@ -379,6 +393,19 @@ extension Strings {
         cutMovedPluralFormat: "%d itens movidos",
         cutSomeFailed: "Alguns itens não puderam ser movidos",
 
+        autoQuitName: "Encerrar ao fechar",
+        autoQuitEnable: "Encerrar o app ao fechar a última janela",
+        autoQuitEnableCaption: "Fechar a última janela de um app também o encerra — como no Windows.",
+        autoQuitActiveNow: "Ativo e monitorando janelas",
+        autoQuitHowTitle: "Como funciona",
+        autoQuitStep1: "Feche a última janela de um app (⌘W ou o botão vermelho).",
+        autoQuitStep2: "O app é encerrado sozinho, liberando memória — diálogos de “salvar?” continuam aparecendo.",
+        autoQuitPredictableNote: "Apps que normalmente rodam sem janela nunca são encerrados.",
+        autoQuitExceptionsTitle: "Exceções",
+        autoQuitExceptionsCaption: "Apps nesta lista continuam abertos mesmo sem nenhuma janela.",
+        autoQuitExceptionsEmpty: "Nenhuma exceção",
+        autoQuitAddApp: "Adicionar app…",
+
         breakdownMeasuring: "Medindo…",
 
         mixerSection: "Mixer de volume",
@@ -573,6 +600,19 @@ extension Strings {
         cutMovedSingular: "1 item moved",
         cutMovedPluralFormat: "%d items moved",
         cutSomeFailed: "Some items couldn’t be moved",
+
+        autoQuitName: "Quit on close",
+        autoQuitEnable: "Quit an app when its last window closes",
+        autoQuitEnableCaption: "Closing an app's last window also quits it — like on Windows.",
+        autoQuitActiveNow: "Active and watching windows",
+        autoQuitHowTitle: "How it works",
+        autoQuitStep1: "Close an app's last window (⌘W or the red button).",
+        autoQuitStep2: "The app quits on its own, freeing memory — “save changes?” dialogs still appear.",
+        autoQuitPredictableNote: "Apps that normally run without a window are never quit.",
+        autoQuitExceptionsTitle: "Exceptions",
+        autoQuitExceptionsCaption: "Apps on this list stay open even with no windows.",
+        autoQuitExceptionsEmpty: "No exceptions",
+        autoQuitAddApp: "Add app…",
 
         breakdownMeasuring: "Measuring…",
 
