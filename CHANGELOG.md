@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.4.6] - 2026-06-12
+
+### Changed
+- The app is now called simply **Vorssaint** everywhere you see it (menu bar,
+  About, onboarding, notifications). The bundle id, signing identity and app
+  filename are unchanged, so this update keeps your granted permissions
+- README rewritten around what each feature gets you, with the free, local,
+  no-account stance up front
+
 ## [2.4.5] - 2026-06-12
 
 ### Fixed
