@@ -18,30 +18,44 @@ final class Permissions: ObservableObject {
 
     private init() {
         refresh()
-        // Cheap always-on watch: features come alive the moment a permission
-        // is granted in System Settings, no relaunch or open window required.
+        // Cheap always-on watch for Accessibility and Screen Recording: those are
+        // pure in-process status checks (no file access) and can be granted while
+        // the app runs, so features come alive moments after the toggle flips.
+        // Full Disk Access is deliberately NOT polled here: it can only change
+        // across a relaunch (a running process never gains or is meant to lose
+        // it mid-session), and probing it touches protected paths, so polling it
+        // would just be repeated denied accesses for no gain.
         let timer = Timer(timeInterval: 2.5, repeats: true) { [weak self] _ in
-            self?.refresh()
+            self?.refreshActivePermissions()
         }
         timer.tolerance = 1
         RunLoop.main.add(timer, forMode: .common)
-        // Re-check the instant the user returns from System Settings, so a
-        // freshly granted permission reflects immediately instead of up to a
-        // tick later.
+        // Re-check everything the instant the user returns from System Settings
+        // (e.g. after relaunching for Full Disk Access), so the state reflects
+        // immediately instead of waiting for the next launch.
         NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification,
                                                object: nil, queue: .main) { [weak self] _ in
             self?.refresh()
         }
     }
 
+    /// Full refresh including Full Disk Access. Runs at launch and on activation.
     func refresh() {
+        let fda = Self.probeFullDiskAccess()
+        refreshActivePermissions()
+        DispatchQueue.main.async {
+            if self.fullDiskAccess != fda { self.fullDiskAccess = fda }
+        }
+    }
+
+    /// Accessibility and Screen Recording only — free, side-effect-free checks
+    /// suitable for frequent polling.
+    private func refreshActivePermissions() {
         let ax = AXIsProcessTrusted()
         let sr = CGPreflightScreenCaptureAccess()
-        let fda = Self.probeFullDiskAccess()
         DispatchQueue.main.async {
             if self.accessibility != ax { self.accessibility = ax }
             if self.screenRecording != sr { self.screenRecording = sr }
-            if self.fullDiskAccess != fda { self.fullDiskAccess = fda }
         }
     }
 

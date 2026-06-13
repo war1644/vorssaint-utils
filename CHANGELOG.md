@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.5.4] - 2026-06-13
+
+### Changed
+- **Less idle background work.** The Full Disk Access check no longer runs on the
+  recurring permission poll. That access cannot change while the app is running
+  (only across a relaunch), so it is now checked at launch and when the app is
+  reactivated instead. This removes a steady stream of denied file accesses for
+  anyone who has not granted it, with no change in behavior
+
 ## [2.5.3] - 2026-06-13
 
 ### Fixed
