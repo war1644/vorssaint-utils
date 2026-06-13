@@ -14,12 +14,6 @@ final class KeepAwakeManager: ObservableObject {
     @Published private(set) var endDate: Date? // nil = indefinite
     @Published private(set) var clamshellActive = false
     @Published private(set) var passwordlessClamshell = false
-    @Published var keepDisplayOn: Bool {
-        didSet {
-            UserDefaults.standard.set(keepDisplayOn, forKey: DefaultsKey.keepDisplayOn)
-            if isActive { applyAssertions() }
-        }
-    }
 
     /// Persistent preference: when on, every keep-awake session also disables
     /// lid sleep, and ending the session restores it — no per-session setup.
@@ -45,7 +39,6 @@ final class KeepAwakeManager: ObservableObject {
     private var batteryTimer: Timer?
 
     private init() {
-        keepDisplayOn = UserDefaults.standard.object(forKey: DefaultsKey.keepDisplayOn) as? Bool ?? true
         clamshellPreferred = UserDefaults.standard.bool(forKey: DefaultsKey.clamshellPreferred)
         refreshPasswordlessStatus()
     }
@@ -135,21 +128,18 @@ final class KeepAwakeManager: ObservableObject {
                 hasSystemAssertion = true
             }
         }
-        if keepDisplayOn {
-            if !hasDisplayAssertion {
-                var id = IOPMAssertionID(0)
-                let ok = IOPMAssertionCreateWithName("PreventUserIdleDisplaySleep" as CFString,
-                                                     IOPMAssertionLevel(kIOPMAssertionLevelOn),
-                                                     "Vorssaint Utils: keep the display on" as CFString,
-                                                     &id)
-                if ok == kIOReturnSuccess {
-                    displayAssertion = id
-                    hasDisplayAssertion = true
-                }
+        // The display always stays on during a session; a Mac kept awake with
+        // a dark screen reads as "not working" and invites a lid close.
+        if !hasDisplayAssertion {
+            var id = IOPMAssertionID(0)
+            let ok = IOPMAssertionCreateWithName("PreventUserIdleDisplaySleep" as CFString,
+                                                 IOPMAssertionLevel(kIOPMAssertionLevelOn),
+                                                 "Vorssaint Utils: keep the display on" as CFString,
+                                                 &id)
+            if ok == kIOReturnSuccess {
+                displayAssertion = id
+                hasDisplayAssertion = true
             }
-        } else if hasDisplayAssertion {
-            IOPMAssertionRelease(displayAssertion)
-            hasDisplayAssertion = false
         }
     }
 

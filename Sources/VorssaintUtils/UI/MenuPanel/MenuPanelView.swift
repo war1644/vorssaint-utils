@@ -122,11 +122,6 @@ struct KeepAwakeCard: View {
 
             Divider()
 
-            optionRow(title: l10n.s.keepDisplayOn,
-                      caption: nil,
-                      isOn: $awake.keepDisplayOn,
-                      disabled: false)
-
             optionRow(title: l10n.s.clamshellTitle,
                       caption: clamshellCaption,
                       isOn: $awake.clamshellPreferred,
