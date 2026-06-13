@@ -11,7 +11,7 @@
 
 One small menu bar app that does the jobs you'd otherwise buy a handful of
 separate utilities for: keep your Mac awake, see what's slowing it down, set the
-volume per app, switch windows and tabs, and fix a few everyday annoyances.
+volume per app, switch windows, and fix a few everyday annoyances.
 
 **Free. Open source. Local.** No account, no subscription, no telemetry, no AI.
 Nothing leaves your Mac except an update check you can turn off. It's native
@@ -30,8 +30,8 @@ Turn Safari down without touching Spotify or Zoom. The per-app mixer macOS never
 shipped, with a live dot on whatever is playing. (macOS 14.4 and later.)
 
 ### 🪟 Jump to any window instantly
-Replace ⌘Tab with a grid of live window thumbnails, every browser tab as its own
-entry, and a quick flick that toggles straight back to where you were.
+Replace ⌘Tab with a grid of live window thumbnails, including multiple windows of
+the same app, and a quick flick that toggles straight back to the last one you used.
 
 ### ⚡ Keep your Mac awake on demand
 For a download, a build or a presentation: on a timer or until you stop it, even
@@ -110,9 +110,8 @@ through each grant.
 | **Full Disk Access** (optional) | A more thorough uninstaller scan | Scans the accessible locations only |
 | **Administrator** (once, optional) | Password-free closed-lid toggling | Password prompt per toggle |
 
-Cut & paste, the switcher tabs and the uninstaller also ask macOS for Automation
-consent the first time they talk to Finder or a browser. The shelf needs no
-permissions.
+Cut & paste and the uninstaller also ask macOS for Automation consent the first
+time they talk to Finder. The shelf needs no permissions.
 
 The first launch opens a short, guided onboarding (language, permissions and an
 opt-in page per feature). Revisit it anytime from **Settings › About**.

@@ -29,7 +29,7 @@
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>O Vorssaint controla o Finder (mover arquivos recortados e enviar itens à Lixeira no desinstalador) e os navegadores (listar e ativar abas no alternador).</string>
+	<string>O Vorssaint controla o Finder para mover arquivos recortados e para enviar itens à Lixeira no desinstalador.</string>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>Vorssaint intercepta o áudio de apps individuais apenas para ajustar o volume de cada um no mixer. Nada é gravado nem sai do seu Mac.</string>
 	<key>NSHumanReadableCopyright</key>

@@ -297,7 +297,6 @@ struct SwitcherSettings: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var permissions = Permissions.shared
     @AppStorage(DefaultsKey.switcherEnabled) private var switcherEnabled = true
-    @AppStorage(DefaultsKey.switcherShowBrowserTabs) private var showBrowserTabs = true
 
     var body: some View {
         Form {
@@ -307,11 +306,6 @@ struct SwitcherSettings: View {
                         AppSwitcher.shared.syncWithPreferences()
                     }
                 Text(l10n.s.switcherEnableCaption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Toggle(l10n.s.switcherTabsToggle, isOn: $showBrowserTabs)
-                    .disabled(!switcherEnabled)
-                Text(l10n.s.switcherTabsCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text(l10n.s.switcherUsageHint)

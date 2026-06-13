@@ -6,7 +6,7 @@
 
 Um app pequeno na barra de menus que faz o trabalho para o qual você instalaria
 (e pagaria) vários utilitários separados: manter o Mac acordado, ver o que está
-deixando ele lento, ajustar o volume por app, alternar janelas e abas, e resolver
+deixando ele lento, ajustar o volume por app, alternar janelas, e resolver
 algumas chatices do dia a dia.
 
 **Grátis. Open source. Local.** Sem conta, sem assinatura, sem telemetria, sem
@@ -26,8 +26,8 @@ Abaixe o Safari sem mexer no Spotify nem no Zoom. O mixer por app que o macOS
 nunca trouxe, com um ponto ao vivo no que está tocando. (macOS 14.4 ou mais recente.)
 
 ### 🪟 Vá para qualquer janela na hora
-Substitui o ⌘Tab por uma grade com miniaturas reais das janelas, cada aba de
-navegador como uma entrada própria, e um toque rápido que volta para onde você estava.
+Substitui o ⌘Tab por uma grade com miniaturas reais das janelas, incluindo várias
+janelas do mesmo app, e um toque rápido que volta para a última janela usada.
 
 ### ⚡ Mantenha o Mac acordado sob demanda
 Para um download, um build ou uma apresentação: com tempo definido ou até você
@@ -107,9 +107,9 @@ cada concessão.
 | **Acesso Total ao Disco** (opcional) | Varredura mais completa do desinstalador | Varre só os locais acessíveis |
 | **Administrador** (uma vez, opcional) | Tampa fechada sem senha | Pede senha a cada uso |
 
-Recortar e colar, as abas do alternador e o desinstalador também pedem o
-consentimento de Automação na primeira vez que falam com o Finder ou um
-navegador. A área temporária não precisa de nenhuma permissão.
+Recortar e colar e o desinstalador também pedem o consentimento de Automação na
+primeira vez que falam com o Finder. A área temporária não precisa de nenhuma
+permissão.
 
 A primeira abertura traz um onboarding curto e guiado (idioma, permissões e uma
 página opcional por recurso). Reveja quando quiser em **Ajustes › Sobre**.

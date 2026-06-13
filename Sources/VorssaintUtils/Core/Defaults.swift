@@ -14,7 +14,6 @@ enum DefaultsKey {
     static let sleepDisabledFlag = "vorssDisabledSleep"   // internal guard for pmset disablesleep
     static let scrollInverterEnabled = "scrollInverterEnabled"
     static let switcherEnabled = "switcherEnabled"
-    static let switcherShowBrowserTabs = "switcherShowBrowserTabs"
     static let autoCheckUpdates = "autoCheckUpdates"
     static let appVolumes = "appVolumes"                  // [bundle id: 0...1]
     static let finderCutPasteEnabled = "finderCutPasteEnabled"
@@ -41,7 +40,6 @@ enum Defaults {
             DefaultsKey.showCountdown: false,
             DefaultsKey.scrollInverterEnabled: false,
             DefaultsKey.switcherEnabled: true,
-            DefaultsKey.switcherShowBrowserTabs: true,
             DefaultsKey.autoCheckUpdates: true,
             // Finder never benefits from being "quit" (it just relaunches), so
             // it's excepted out of the box.

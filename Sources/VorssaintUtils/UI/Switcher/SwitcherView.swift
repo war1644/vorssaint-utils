@@ -66,11 +66,6 @@ private struct WindowCard: View {
     let preview: CGImage?
     let isSelected: Bool
 
-    private var isTab: Bool {
-        if case .browserTab = window.kind { return true }
-        return false
-    }
-
     var body: some View {
         VStack(spacing: 8) {
             ZStack {
@@ -108,19 +103,12 @@ private struct WindowCard: View {
             .frame(width: SwitcherGrid.cardWidth - 20,
                    height: SwitcherGrid.cardHeight - 58)
 
-            HStack(spacing: 4) {
-                if isTab {
-                    Image(systemName: "rectangle.topthird.inset.filled")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.tertiary)
-                }
-                Text(window.displayTitle)
-                    .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-            }
-            .frame(maxWidth: SwitcherGrid.cardWidth - 28)
+            Text(window.displayTitle)
+                .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .foregroundStyle(isSelected ? .primary : .secondary)
+                .frame(maxWidth: SwitcherGrid.cardWidth - 28)
         }
         .padding(10)
         .frame(width: SwitcherGrid.cardWidth, height: SwitcherGrid.cardHeight)

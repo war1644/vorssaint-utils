@@ -9,19 +9,12 @@ private func _AXUIElementGetWindow(_ element: AXUIElement,
                                    _ windowID: UnsafeMutablePointer<CGWindowID>) -> AXError
 
 /// Brings a switcher selection to the front: unminimizes if needed, raises the
-/// exact window through Accessibility and activates the owning app. Browser
-/// tabs are made current via scripting first, then their window is raised.
-/// When the window lives on another Space, activating the app lets Mission
-/// Control carry the user there.
+/// exact window through Accessibility and activates the owning app. When the
+/// window lives on another Space, activating the app lets Mission Control carry
+/// the user there.
 enum WindowActivator {
     static func activate(_ item: SwitcherItem) {
-        // Raise immediately so the switch feels instant. For a browser tab the
-        // window comes forward right away and the tab-select script runs in
-        // parallel — never gating the visible switch on Apple Events latency.
         raiseWindow(of: item)
-        if case let .browserTab(tab) = item.kind {
-            BrowserTabService.shared.selectTab(tab)
-        }
     }
 
     private static func raiseWindow(of item: SwitcherItem) {
@@ -41,7 +34,7 @@ enum WindowActivator {
     }
 
     private static func axElement(for item: SwitcherItem) -> AXUIElement? {
-        guard let windowID = item.windowID else { return nil }
+        let windowID = item.windowID
         let axApp = AXUIElementCreateApplication(item.pid)
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(axApp, kAXWindowsAttribute as CFString, &value) == .success,

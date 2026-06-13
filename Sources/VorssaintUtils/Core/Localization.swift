@@ -156,8 +156,6 @@ struct Strings {
     let switcherEnableCaption: String
     let switcherUsageHint: String
     let switcherNoWindows: String
-    let switcherTabsToggle: String
-    let switcherTabsCaption: String
 
     // MARK: Feature — cut & paste in Finder
     let cutPasteName: String
@@ -204,6 +202,7 @@ struct Strings {
     let uninstallerFDANote: String
     let uninstallerFDAGrant: String
     let uninstallerFDAHint: String
+    let uninstallerFDARelaunch: String
     let uninstallerScanning: String
     let uninstallerRemoving: String
     let uninstallerFoundTitle: String
@@ -422,11 +421,9 @@ extension Strings {
 
         switcherSection: "Alternador de apps",
         switcherEnable: "Substituir o ⌘Tab pelo alternador do Vorssaint",
-        switcherEnableCaption: "Troque de janela vendo miniaturas reais de cada janela e aba.",
+        switcherEnableCaption: "Troque de janela vendo miniaturas reais, inclusive entre várias janelas do mesmo app.",
         switcherUsageHint: "Segure ⌘ e toque Tab para navegar; solte para ativar a janela. Shift ou ← volta; Q fecha o app selecionado; Esc cancela.",
         switcherNoWindows: "Nenhuma janela aberta",
-        switcherTabsToggle: "Mostrar abas dos navegadores",
-        switcherTabsCaption: "Cada aba do Safari, Chrome, Edge, Brave ou Vivaldi vira uma entrada no alternador. O macOS pede permissão de automação na primeira vez, por navegador.",
 
         cutPasteName: "Recortar e colar",
         cutPasteEnable: "Recortar e colar arquivos no Finder",
@@ -469,7 +466,8 @@ extension Strings {
         uninstallerEmptyNote: "Nada é removido sem a sua confirmação.",
         uninstallerFDANote: "Conceda Acesso Total ao Disco para uma análise mais completa.",
         uninstallerFDAGrant: "Conceder acesso…",
-        uninstallerFDAHint: "Ative o Vorssaint na lista e reabra o app quando o macOS pedir.",
+        uninstallerFDAHint: "Ative o Vorssaint na lista. O acesso só vale depois de reabrir o app.",
+        uninstallerFDARelaunch: "Reabrir agora",
         uninstallerScanning: "Analisando arquivos…",
         uninstallerRemoving: "Movendo para a Lixeira…",
         uninstallerFoundTitle: "encontrado",
@@ -682,11 +680,9 @@ extension Strings {
 
         switcherSection: "App switcher",
         switcherEnable: "Replace ⌘Tab with the Vorssaint switcher",
-        switcherEnableCaption: "Switch windows with real thumbnails of every window and tab.",
+        switcherEnableCaption: "Switch windows with real thumbnails, including between multiple windows of the same app.",
         switcherUsageHint: "Hold ⌘ and tap Tab to navigate; release to activate the window. Shift or ← goes back; Q quits the selected app; Esc cancels.",
         switcherNoWindows: "No open windows",
-        switcherTabsToggle: "Show browser tabs",
-        switcherTabsCaption: "Every Safari, Chrome, Edge, Brave or Vivaldi tab becomes a switcher entry. macOS asks for Automation consent once per browser.",
 
         cutPasteName: "Cut & paste",
         cutPasteEnable: "Cut & paste files in Finder",
@@ -729,7 +725,8 @@ extension Strings {
         uninstallerEmptyNote: "Nothing is removed without your confirmation.",
         uninstallerFDANote: "Grant Full Disk Access for a more thorough scan.",
         uninstallerFDAGrant: "Grant access…",
-        uninstallerFDAHint: "Turn on Vorssaint in the list and reopen the app when macOS asks.",
+        uninstallerFDAHint: "Turn it on in the list. Access only applies after you reopen the app.",
+        uninstallerFDARelaunch: "Relaunch now",
         uninstallerScanning: "Scanning files…",
         uninstallerRemoving: "Moving to the Trash…",
         uninstallerFoundTitle: "found",

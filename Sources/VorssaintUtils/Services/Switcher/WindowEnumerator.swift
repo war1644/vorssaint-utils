@@ -67,7 +67,9 @@ enum WindowEnumerator {
 
     /// Groups windows by app in most-recently-used order while preserving the
     /// window server's front-to-back order within each app. A stable sort is
-    /// required so the within-app order survives the regrouping.
+    /// required so the within-app order survives the regrouping. This is what
+    /// puts the window you were just in (including another window of the same
+    /// app) right next to the current one.
     private static func orderByActivation(_ windows: [SwitcherItem]) -> [SwitcherItem] {
         let tracker = AppActivationTracker.shared
         return windows.enumerated().sorted { lhs, rhs in
@@ -75,33 +77,5 @@ enum WindowEnumerator {
             let rankR = tracker.rank(of: rhs.element.pid)
             return rankL != rankR ? rankL < rankR : lhs.offset < rhs.offset
         }.map(\.element)
-    }
-
-    /// Splices browser tabs into the window list: each browser window that has
-    /// scripting data is replaced, in place, by one entry per tab (the active
-    /// tab keeps the window's thumbnail). Windows without tab data — other
-    /// apps, denied automation, mismatched titles — stay as plain entries.
-    static func mergingTabs(_ windows: [SwitcherItem], tabs: [BrowserTab]) -> [SwitcherItem] {
-        guard !tabs.isEmpty else { return windows }
-
-        var byWindow: [pid_t: [String: [BrowserTab]]] = [:]
-        for tab in tabs {
-            byWindow[tab.pid, default: [:]][tab.windowName, default: []].append(tab)
-        }
-
-        var result: [SwitcherItem] = []
-        for window in windows {
-            guard case .window = window.kind,
-                  let group = byWindow[window.pid]?[window.title],
-                  !group.isEmpty
-            else {
-                result.append(window)
-                continue
-            }
-            for tab in group.sorted(by: { $0.tabIndex < $1.tabIndex }) {
-                result.append(.tab(tab, of: window))
-            }
-        }
-        return result
     }
 }
