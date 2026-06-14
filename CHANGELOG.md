@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.7.1] - 2026-06-14
+
+### Changed
+- **The brand badge now sits on a solid black background** instead of the
+  previous purple-tinted one, for a cleaner, more neutral look. It affects the
+  menu bar panel header, the About tab and the onboarding screens.
+
 ## [2.7.0] - 2026-06-14
 
 ### Fixed

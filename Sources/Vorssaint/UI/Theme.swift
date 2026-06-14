@@ -2,11 +2,12 @@ import SwiftUI
 
 /// Shared look & feel: brand colors, card styling and the brand mark.
 enum Theme {
-    /// Deep-space gradient used behind the brand mark.
+    /// Near-black background behind the brand mark. Neutral greys into black, no
+    /// colour cast, with just a hint of depth so the badge does not read as flat.
     static let spaceGradient = LinearGradient(
-        colors: [Color(red: 0.05, green: 0.04, blue: 0.12),
-                 Color(red: 0.13, green: 0.09, blue: 0.30),
-                 Color(red: 0.24, green: 0.13, blue: 0.45)],
+        colors: [Color(white: 0.10),
+                 Color(white: 0.04),
+                 Color.black],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
