@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Per-app volume sliders — the mixer macOS never shipped. Shows every app
-/// holding an audio connection (a green dot marks the ones playing right now);
-/// dragging below 100% routes that app through a gain stage, and 100% restores
-/// untouched passthrough.
+/// Per-app volume sliders, the mixer macOS never shipped. Shows every app
+/// holding an audio connection (a green dot marks the ones playing right now).
+/// 100% is untouched passthrough; below it attenuates and above it (up to 200%)
+/// boosts, with the slider and percentage turning amber in the boost range.
 struct MixerSection: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var mixer = AppVolumeMixer.shared
@@ -53,7 +53,15 @@ struct MixerSection: View {
 
 private struct MixerRow: View {
     @ObservedObject private var mixer = AppVolumeMixer.shared
+    @ObservedObject private var l10n = L10n.shared
     let app: MixerApp
+
+    /// Amber, matching the panel's dark aesthetic, to flag the boost range.
+    private let boostColor = Color(red: 0.96, green: 0.65, blue: 0.16)
+    /// Tie the visual state to the displayed percentage, so "amber" and ">100%"
+    /// always agree and the reset hides exactly when the row reads 100%.
+    private var isBoosting: Bool { (app.volume * 100).rounded() > 100 }
+    private var isAtUnity: Bool { (app.volume * 100).rounded() == 100 }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -75,14 +83,35 @@ private struct MixerRow: View {
                 .truncationMode(.middle)
                 .frame(width: 86, alignment: .leading)
 
-            Slider(value: volumeBinding, in: 0...1)
+            Slider(value: volumeBinding, in: 0...AppVolumeMixer.maxVolume)
                 .controlSize(.small)
+                .tint(isBoosting ? boostColor : nil)
 
-            Text("\(Int((app.volume * 100).rounded()))%")
-                .font(.system(size: 10.5, weight: .medium))
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-                .frame(width: 34, alignment: .trailing)
+            HStack(spacing: 2) {
+                if isBoosting {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(boostColor)
+                }
+                Text("\(Int((app.volume * 100).rounded()))%")
+                    .font(.system(size: 10.5, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(isBoosting ? boostColor : Color.secondary)
+            }
+            .frame(width: 42, alignment: .trailing)
+
+            Button {
+                mixer.setVolume(1, for: app)
+            } label: {
+                Image(systemName: "arrow.counterclockwise")
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .foregroundStyle(isBoosting ? boostColor : Color.secondary)
+                    .frame(width: 14)
+            }
+            .buttonStyle(.plain)
+            .help(l10n.s.mixerResetTooltip)
+            .opacity(isAtUnity ? 0 : 1)
+            .disabled(isAtUnity)
 
             Button {
                 mixer.toggleMute(app)

@@ -36,6 +36,10 @@ final class AppVolumeMixer: ObservableObject {
         return false
     }
 
+    /// Volumes run 0...2: 1.0 is 100% (untouched passthrough), up to 2.0 is a
+    /// 200% boost for sources that play too quietly.
+    static let maxVolume: Double = 2.0
+
     @Published private(set) var apps: [MixerApp] = []
     /// Set when tap creation fails with a permission error, so the panel can
     /// point at the System Audio Recording consent.
@@ -92,8 +96,13 @@ final class AppVolumeMixer: ObservableObject {
 
     // MARK: - Volume API (panel)
 
+    /// 100% means bit-perfect passthrough (no tap). A value the UI would round to
+    /// 100% counts as unity, so dragging near 100% or tapping reset both restore
+    /// true passthrough; anything else (quieter or boosted) runs the gain engine.
+    private func isUnity(_ volume: Double) -> Bool { abs(volume - 1) < 0.005 }
+
     func setVolume(_ volume: Double, for app: MixerApp) {
-        let clamped = min(max(volume, 0), 1)
+        let clamped = min(max(volume, 0), Self.maxVolume)
         persistVolume(clamped, for: app.id)
         if clamped > 0.001 { lastAudibleVolume[app.id] = clamped }
         if let index = apps.firstIndex(where: { $0.id == app.id }) {
@@ -114,8 +123,8 @@ final class AppVolumeMixer: ObservableObject {
     /// Main-thread only. Engine creation happens off-main (CoreAudio object
     /// setup takes tens of milliseconds) and lands back here exactly once.
     private func applyVolume(_ volume: Double, for app: MixerApp) {
-        if volume >= 0.999 {
-            // Full volume: remove the tap entirely — true passthrough.
+        if isUnity(volume) {
+            // 100% only: remove the tap entirely, for true passthrough.
             engines.removeValue(forKey: app.id)?.stop()
             return
         }
@@ -142,7 +151,7 @@ final class AppVolumeMixer: ObservableObject {
                 // The slider may have moved (or returned to 100%) while the
                 // engine was being built — honor the latest state.
                 let latest = self.apps.first { $0.id == app.id }?.volume ?? volume
-                if latest >= 0.999 {
+                if self.isUnity(latest) {
                     engine.stop()
                 } else {
                     engine.gain = Float(latest)
@@ -225,7 +234,7 @@ final class AppVolumeMixer: ObservableObject {
             }
         }
 
-        for app in apps where app.volume < 0.999 && engines[app.id] == nil {
+        for app in apps where !isUnity(app.volume) && engines[app.id] == nil {
             applyVolume(app.volume, for: app)
         }
     }
@@ -238,7 +247,7 @@ final class AppVolumeMixer: ObservableObject {
 
     private func persistVolume(_ volume: Double, for id: String) {
         var volumes = savedVolumes()
-        if volume >= 0.999 {
+        if isUnity(volume) {
             volumes.removeValue(forKey: id)
         } else {
             volumes[id] = volume
@@ -286,7 +295,7 @@ private protocol GainEngine: AnyObject {
     func stop()
 }
 
-/// The audio path for one app while its volume is below 100%: a muted process
+/// The audio path for one app whose volume is not 100% (quieter or boosted): a muted process
 /// tap (the app's sound no longer reaches the speakers) feeding an aggregate
 /// device whose IO proc re-renders the samples scaled by `gain` onto the real
 /// output device.
@@ -295,7 +304,7 @@ private final class TapGainEngine: GainEngine {
     let tappedObjects: [AudioObjectID]
     var gain: Float {
         get { gainBox.value }
-        set { gainBox.value = min(max(newValue, 0), 1) }
+        set { gainBox.value = min(max(newValue, 0), Float(AppVolumeMixer.maxVolume)) }
     }
 
     /// Read on the realtime audio thread, written from the main thread; a
@@ -309,7 +318,7 @@ private final class TapGainEngine: GainEngine {
 
     init?(objects: [AudioObjectID], gain: Float) {
         tappedObjects = objects
-        gainBox.value = min(max(gain, 0), 1)
+        gainBox.value = min(max(gain, 0), Float(AppVolumeMixer.maxVolume))
 
         var defaultDevice = AudioObjectID(0)
         guard AppVolumeMixer.read(AudioObjectID(kAudioObjectSystemObject),
@@ -349,6 +358,8 @@ private final class TapGainEngine: GainEngine {
             let inputBuffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
             let outputBuffers = UnsafeMutableAudioBufferListPointer(output)
             var gain = box.value
+            let boosting = gain > 1
+            var low: Float = -1, high: Float = 1
             for (index, inputBuffer) in inputBuffers.enumerated() where index < outputBuffers.count {
                 guard let source = inputBuffer.mData?.assumingMemoryBound(to: Float.self),
                       let destination = outputBuffers[index].mData?.assumingMemoryBound(to: Float.self)
@@ -356,6 +367,11 @@ private final class TapGainEngine: GainEngine {
                 let frames = min(Int(inputBuffer.mDataByteSize),
                                  Int(outputBuffers[index].mDataByteSize)) / MemoryLayout<Float>.size
                 vDSP_vsmul(source, 1, &gain, destination, 1, vDSP_Length(frames))
+                // A boost can push samples past [-1, 1]; hard-limit so nothing out
+                // of range reaches the device (a clean clip, never garbage).
+                if boosting {
+                    vDSP_vclip(destination, 1, &low, &high, destination, 1, vDSP_Length(frames))
+                }
             }
         }) == noErr else {
             AudioHardwareDestroyAggregateDevice(aggregateID)

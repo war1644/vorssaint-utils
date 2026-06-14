@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.8.0] - 2026-06-14
+
+### Added
+- **Volume boost in the mixer.** Each app's volume now goes up to 200%, for when a
+  video or call plays too quietly. Above 100% the slider and the percentage turn
+  amber so a boost is never mistaken for normal volume, and a one-tap reset button
+  returns that app to 100%. At 100% the audio stays bit-perfect passthrough.
+
 ## [2.7.3] - 2026-06-14
 
 ### Fixed

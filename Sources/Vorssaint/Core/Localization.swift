@@ -266,6 +266,7 @@ struct Strings {
     let mixerEmpty: String
     let mixerUnavailable: String
     let mixerPermissionBody: String
+    let mixerResetTooltip: String
 
     // MARK: Settings — updates
     let updatesSection: String
@@ -540,6 +541,7 @@ extension Strings {
         mixerEmpty: "Apps que usam áudio aparecem aqui",
         mixerUnavailable: "Disponível a partir do macOS 14.4",
         mixerPermissionBody: "Para ajustar o volume por app, permita “Gravação de Tela e Áudio do Sistema” nos Ajustes do Sistema. O áudio nunca é gravado.",
+        mixerResetTooltip: "Voltar para 100%",
 
         updatesSection: "Atualizações",
         autoCheckToggle: "Procurar atualizações automaticamente",
@@ -811,6 +813,7 @@ extension Strings {
         mixerEmpty: "Apps that use audio show up here",
         mixerUnavailable: "Available on macOS 14.4 and later",
         mixerPermissionBody: "To adjust per-app volume, allow “Screen & System Audio Recording” in System Settings. Audio is never recorded.",
+        mixerResetTooltip: "Reset to 100%",
 
         updatesSection: "Updates",
         autoCheckToggle: "Check for updates automatically",
