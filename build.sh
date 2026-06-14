@@ -40,22 +40,28 @@ iconutil -c icns build/AppIcon.iconset -o "$STAGE/Contents/Resources/AppIcon.icn
 cp build/MenuBarIcon.png build/MenuBarIcon@2x.png build/BrandMark.png "$STAGE/Contents/Resources/"
 xattr -cr "$STAGE"
 
-# Sign with the stable self-signed identity when it's available. A constant
-# signing identity gives the bundle a constant designated requirement, so macOS
-# keeps granted permissions (Accessibility, Screen Recording) across updates —
-# ad-hoc signing changes the cdhash every build and silently drops them.
-# Falls back to ad-hoc on a fresh clone without the identity.
-#
-# The name stays "Vorssaint Utils Signing" deliberately: the released app's
-# designated requirement is pinned to this certificate, so renaming it would
-# drop every user's permissions. It is the one pre-rename name kept on purpose,
-# and it is never shown outside the keychain.
-SIGN_IDENTITY="Vorssaint Utils Signing"
-if security find-identity -p codesigning 2>/dev/null | grep -q "$SIGN_IDENTITY"; then
-    echo "  signing with stable identity: $SIGN_IDENTITY"
-    codesign --force --sign "$SIGN_IDENTITY" "$STAGE"
+# Signing, in order of preference:
+#   1. Developer ID Application — the real, Apple-issued identity used for
+#      notarized releases. Signed with the hardened runtime (required for
+#      notarization), the app's entitlements and a secure timestamp. Gives a
+#      stable, team-based designated requirement, so permissions persist across
+#      updates AND Gatekeeper shows no "unverified developer" warning.
+#   2. "Vorssaint Utils Signing" — the legacy stable self-signed identity, kept
+#      as a fallback so contributors without a Developer ID still get a constant
+#      designated requirement across their local builds.
+#   3. Ad-hoc — fresh clone with no identity at all.
+ENTITLEMENTS="Resources/Vorssaint.entitlements"
+DEVID="$(security find-identity -v -p codesigning 2>/dev/null | grep 'Developer ID Application' | head -1 | sed -E 's/.*"(.*)".*/\1/')"
+LEGACY_IDENTITY="Vorssaint Utils Signing"
+if [[ -n "$DEVID" ]]; then
+    echo "  signing with Developer ID (hardened runtime): $DEVID"
+    codesign --force --options runtime --timestamp \
+        --entitlements "$ENTITLEMENTS" --sign "$DEVID" "$STAGE"
+elif security find-identity -p codesigning 2>/dev/null | grep -q "$LEGACY_IDENTITY"; then
+    echo "  signing with legacy self-signed identity: $LEGACY_IDENTITY"
+    codesign --force --sign "$LEGACY_IDENTITY" "$STAGE"
 else
-    echo "  signing ad-hoc (stable identity not installed — run Tools/setup-signing.sh)"
+    echo "  signing ad-hoc (no identity installed — run Tools/setup-signing.sh)"
     codesign --force --sign - "$STAGE"
 fi
 codesign --verify --strict "$STAGE"

@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.6.0] - 2026-06-14
+
+### Changed
+- **Vorssaint is now signed with an Apple Developer ID and notarized.** The
+  first-launch security warning is gone: downloads open normally, with nothing to
+  click around. Releases are notarized and stapled automatically.
+
+### Migration
+- **You will grant permissions once on this update.** Notarization requires a
+  different signing certificate, which changes the app's code identity, so macOS
+  asks you to re-allow Accessibility, Screen Recording and the like a single
+  time. After this update the identity is stable again (now an Apple-issued one),
+  so future updates keep your permissions as before. Your settings and data are
+  untouched.
+
 ## [2.5.4] - 2026-06-13
 
 ### Changed

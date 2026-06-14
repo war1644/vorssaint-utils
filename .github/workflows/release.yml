@@ -26,8 +26,22 @@ jobs:
       - name: Selftest
         run: ./build/Vorssaint --selftest
 
+      - name: Notarize app
+        env:
+          NOTARY_API_KEY_P8: ${{ secrets.NOTARY_API_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: ./Tools/notarize.sh build/stage/Vorssaint.app
+
       - name: Package DMG
         run: ./Tools/make-dmg.sh
+
+      - name: Notarize DMG
+        env:
+          NOTARY_API_KEY_P8: ${{ secrets.NOTARY_API_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: ./Tools/notarize.sh dist/*.dmg
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
@@ -35,12 +49,5 @@ jobs:
           files: dist/*.dmg
           generate_release_notes: true
           body: |
-            ### Opening it the first time
-
-            Vorssaint is signed but not notarized by Apple, so macOS shows a
-            security warning on the first launch. It's open source, so you can
-            read every line or build it yourself. To open it, do one of these once:
-
-            - **System Settings › Privacy & Security**, scroll to **Security**,
-              then click **Open Anyway**.
-            - Or in Terminal: `xattr -dr com.apple.quarantine "/Applications/Vorssaint.app"`
+            Vorssaint is signed with a Developer ID and notarized by Apple, so it
+            opens normally. Drag it to Applications and launch it.
