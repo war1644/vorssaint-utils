@@ -5,7 +5,7 @@
 [![Release](https://img.shields.io/github/v/release/vorssaint/vorssaint-utils?label=release)](https://github.com/vorssaint/vorssaint-utils/releases)
 [![CI](https://github.com/vorssaint/vorssaint-utils/actions/workflows/ci.yml/badge.svg)](https://github.com/vorssaint/vorssaint-utils/actions/workflows/ci.yml)
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B%20(Apple%20Silicon)-black)](#requirements)
-[![License: PolyForm NC](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 
 *Leia em [Português (Brasil)](docs/README.pt-BR.md).*
 
@@ -75,7 +75,7 @@ links so you can drag them between apps, windows and Spaces.
 
 ## Why it's built this way
 
-- **Free and open source**, under a noncommercial license. No paywalled tiers.
+- **Free and open source**, under GPL-3.0-or-later. No paywalled tiers.
 - **Local by default.** No account, no sign-in, no telemetry. The only network
   call checks GitHub for a new version, and you can turn it off.
 - **Native and light.** Plain SwiftUI + AppKit, no external dependencies, a
@@ -103,6 +103,13 @@ open it and drag **Vorssaint** into **Applications**.
 Vorssaint is signed with a Developer ID and notarized by Apple, so it opens
 normally with no security warning. The stable signing identity also keeps your
 granted permissions across updates.
+
+### Official builds and forks
+Official Vorssaint builds are distributed only by the project maintainer.
+Unofficial forks must use a different name, icon, bundle identifier and signing
+identity. The GPL license covers the source code only and does not grant
+permission to use the Vorssaint name, logo, icon, bundle identity, trade dress
+or official branding. See [TRADEMARKS.md](TRADEMARKS.md).
 
 ### Build from source
 ```sh
@@ -171,6 +178,6 @@ sensor mapping to a new chip.
 
 ## License
 
-[PolyForm Noncommercial License 1.0.0](LICENSE), © 2026 Vorssaint. Free to use,
-modify and share for any **noncommercial** purpose, with attribution. Commercial
-use is not permitted.
+The source code is licensed under [GPL-3.0-or-later](LICENSE), copyright
+© 2026 Vorssaint. The license covers source code only. Vorssaint branding is
+covered separately in [TRADEMARKS.md](TRADEMARKS.md).

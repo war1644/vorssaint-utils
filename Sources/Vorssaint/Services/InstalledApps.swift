@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vorssaint
+
 import AppKit
 
 /// Small lookups for resolving a bundle identifier to a human name and icon,

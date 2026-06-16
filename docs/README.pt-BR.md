@@ -71,7 +71,7 @@ textos e links para você arrastar entre apps, janelas e desktops.
 
 ## Por que é feito assim
 
-- **Grátis e open source**, sob uma licença não comercial. Sem níveis pagos.
+- **Grátis e open source**, sob GPL-3.0-or-later. Sem níveis pagos.
 - **Local por padrão.** Sem conta, sem login, sem telemetria. A única chamada de
   rede verifica se há nova versão no GitHub, e dá para desligar.
 - **Nativo e leve.** SwiftUI + AppKit puro, sem dependências externas, um app
@@ -99,6 +99,13 @@ abra e arraste o **Vorssaint** para **Aplicativos**.
 O Vorssaint é assinado com um Developer ID e notarizado pela Apple, então abre
 normalmente, sem aviso de segurança. A assinatura estável também mantém as
 permissões concedidas entre as atualizações.
+
+### Builds oficiais e forks
+Builds oficiais do Vorssaint são distribuídos apenas pelo mantenedor do projeto.
+Forks não oficiais devem usar outro nome, ícone, bundle identifier e identidade
+de assinatura. A GPL cobre apenas o código-fonte e não concede permissão para
+usar o nome Vorssaint, logo, ícone, identidade de bundle, trade dress ou
+branding oficial. Veja [TRADEMARKS.md](../TRADEMARKS.md).
 
 ### Compilar do código
 ```sh
@@ -146,6 +153,6 @@ as permissões.
 
 ## Licença
 
-[PolyForm Noncommercial License 1.0.0](../LICENSE), © 2026 Vorssaint. Livre para
-usar, modificar e compartilhar para qualquer fim **não comercial**, com
-atribuição. Uso comercial não é permitido.
+O código-fonte é licenciado sob [GPL-3.0-or-later](../LICENSE), copyright
+© 2026 Vorssaint. A licença cobre apenas o código-fonte. O branding do
+Vorssaint é tratado separadamente em [TRADEMARKS.md](../TRADEMARKS.md).

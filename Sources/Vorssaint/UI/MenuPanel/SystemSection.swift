@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vorssaint
+
 import SwiftUI
 
 /// Which per-app breakdown is expanded in the System section.

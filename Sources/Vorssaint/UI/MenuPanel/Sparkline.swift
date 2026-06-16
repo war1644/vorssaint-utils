@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vorssaint
+
 import SwiftUI
 
 /// A small history graph: a filled area under a smooth polyline. Hand-drawn with

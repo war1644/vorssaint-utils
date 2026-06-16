@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vorssaint
+
 import Foundation
 
 // 日本語 — translated and hand-checked, not machine output.

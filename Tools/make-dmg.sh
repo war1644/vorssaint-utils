@@ -1,4 +1,7 @@
 #!/bin/zsh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Vorssaint
+
 # Packages the built app into a styled, distributable DMG
 # (dist/Vorssaint-<version>.dmg): a window with the app icon, an arrow and
 # the Applications folder for drag-and-drop install. Run ./build.sh first.

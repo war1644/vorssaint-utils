@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vorssaint
+
 import SwiftUI
 
 /// Floating HUD that shows which files are held for a move (after ⌘X) and then

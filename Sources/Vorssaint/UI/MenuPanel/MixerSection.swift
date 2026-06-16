@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vorssaint
+
 import SwiftUI
 
 /// Per-app volume sliders, the mixer macOS never shipped. Shows every app

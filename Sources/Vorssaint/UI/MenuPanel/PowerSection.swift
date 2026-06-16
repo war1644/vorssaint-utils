@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vorssaint
+
 import SwiftUI
 
 /// The "Power" card: how much the Mac is drawing overall, from the adapter, and

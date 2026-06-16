@@ -1,4 +1,7 @@
 #!/bin/zsh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Vorssaint
+
 # Cleanly removes Vorssaint and every piece of system state it created:
 # the login item, TCC permissions, preferences, saved state and (if present)
 # the password-free closed-lid sudoers rule. Leaves no dead entries behind.

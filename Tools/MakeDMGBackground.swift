@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vorssaint
+
 // Renders the installer (DMG) window background: a clean light panel with the
 // app title and an arrow pointing from the app icon toward the Applications
 // folder. The two icons themselves are placed by Finder on top of this image.

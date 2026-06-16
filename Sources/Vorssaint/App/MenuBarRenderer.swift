@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vorssaint
+
 import AppKit
 
 /// A live reading the user can pin next to the menu bar icon. Order here is the

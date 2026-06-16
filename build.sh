@@ -1,4 +1,7 @@
 #!/bin/zsh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Vorssaint
+
 # Builds Vorssaint, assembles the .app bundle, signs it and (with --install)
 # installs it into /Applications.
 #

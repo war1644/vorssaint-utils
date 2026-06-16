@@ -2,6 +2,11 @@
 
 Thanks for the interest! This project aims to stay small, native and readable.
 
+## License for contributions
+
+Unless explicitly stated otherwise, contributions to this repository are
+accepted under GPL-3.0-or-later.
+
 ## Getting started
 
 ```sh

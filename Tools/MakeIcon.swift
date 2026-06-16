@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vorssaint
+
 // Generates all icon assets from the official artwork (Resources/Brand/logo.png):
 // - the app iconset (black mark on a clean light squircle)
 // - the menu bar template glyph (trimmed mark, 1x/2x)

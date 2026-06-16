@@ -1,4 +1,7 @@
 #!/bin/zsh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Vorssaint
+
 # Creates a stable, self-signed code-signing identity named "Vorssaint Utils
 # Signing" in a dedicated keychain. build.sh uses it automatically, giving every
 # build the same code signature — so macOS keeps granted permissions

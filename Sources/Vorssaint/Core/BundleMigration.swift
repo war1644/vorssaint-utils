@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vorssaint
+
 import AppKit
 
 /// Completes the on-disk rename for installs carried over from a pre-2.5 build.
