@@ -23,23 +23,17 @@ body:
     validations:
       required: true
 
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternatives Considered
-      description: Have you considered any alternative solutions?
-
   - type: dropdown
     id: feature_area
     attributes:
       label: Feature Area
       options:
-        - Keep Awake
+        - Other
         - System Monitor
         - Menu Bar
         - Volume Mixer
         - Window Switcher
-        - Other
+        - Keep Awake
       
     validations:
       required: true
@@ -49,9 +43,3 @@ body:
     attributes:
       label: Mockups / References
       description: Attach sketches, screenshots, or references.
-
-  - type: textarea
-    id: additional
-    attributes:
-      label: Additional Context
-      description: Any other context, use cases, or information.
