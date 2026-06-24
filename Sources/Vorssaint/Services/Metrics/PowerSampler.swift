@@ -85,11 +85,13 @@ final class PowerSampler {
                 reading.chargePercent = Int((Double(capacity) / Double(maxCapacity) * 100).rounded())
             }
             if let cycles = props["CycleCount"] as? Int { reading.cycleCount = cycles }
-            if let design = props["DesignCapacity"] as? Int, design > 0 {
+            if let design = batteryInt("DesignCapacity", in: props), design > 0 {
                 // Fallback estimate from IORegistry: a full-charge capacity over
                 // design. NominalChargeCapacity is the smoothed value (closest of
                 // the raw fields); fall back to AppleRawMaxCapacity when absent.
-                let fullCharge = (props["NominalChargeCapacity"] as? Int) ?? (props["AppleRawMaxCapacity"] as? Int)
+                let fullCharge = batteryInt("NominalChargeCapacity", in: props)
+                    ?? batteryInt("FullChargeCapacity", in: props)
+                    ?? batteryInt("AppleRawMaxCapacity", in: props)
                 if let fullCharge, fullCharge > 0 {
                     reading.healthPercent = min(100, Double(fullCharge) / Double(design) * 100)
                 }
@@ -134,6 +136,31 @@ final class PowerSampler {
             return nil
         }
         return dict
+    }
+
+    private func batteryInt(_ key: String, in props: [String: Any]) -> Int? {
+        if let value = intValue(props[key]) {
+            return value
+        }
+        if let batteryData = props["BatteryData"] as? [String: Any] {
+            return intValue(batteryData[key])
+        }
+        return nil
+    }
+
+    private func intValue(_ value: Any?) -> Int? {
+        switch value {
+        case let value as Int:
+            return value
+        case let value as NSNumber:
+            let int64 = value.int64Value
+            guard int64 >= Int64(Int.min), int64 <= Int64(Int.max) else { return nil }
+            return Int(int64)
+        case let value as String:
+            return Int(value)
+        default:
+            return nil
+        }
     }
 
     private func resolvedBatteryService() -> io_service_t {

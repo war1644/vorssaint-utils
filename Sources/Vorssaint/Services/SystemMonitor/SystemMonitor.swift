@@ -65,10 +65,20 @@ struct SystemMonitorPanelNeeds: Equatable {
     var network = false
     var disk = false
     var power = false
+    var cpu = false
+    var gpu = false
+    var memory = false
+    var battery = false
+    var cpuTemperature = false
+    var gpuTemperature = false
+    var batteryTemperature = false
 
     static let none = SystemMonitorPanelNeeds()
 
-    var any: Bool { system || network || disk || power }
+    var any: Bool {
+        system || network || disk || power || cpu || gpu || memory || battery ||
+            cpuTemperature || gpuTemperature || batteryTemperature
+    }
 }
 
 /// Reads temperatures (SMC), CPU/GPU usage, memory, network and power on a
@@ -174,7 +184,6 @@ final class SystemMonitor: ObservableObject {
             if needs == menuPanelNeeds {
                 if shouldRun {
                     ensureTimer()
-                    refresh()
                 } else {
                     stopTimerIfIdle()
                 }
@@ -327,10 +336,10 @@ final class SystemMonitor: ObservableObject {
         let panelNeedsDisk = fullMonitorVisible || menuPanelNeeds.disk
         let panelNeedsPower = fullMonitorVisible || menuPanelNeeds.power
 
-        let panelCPU = panelNeedsSystem && defaults.bool(forKey: DefaultsKey.monitorSysCPU)
-        let panelGPU = panelNeedsSystem && defaults.bool(forKey: DefaultsKey.monitorSysGPU)
-        let panelMemory = panelNeedsSystem && defaults.bool(forKey: DefaultsKey.monitorSysMemory)
-        let panelBattery = panelNeedsSystem && defaults.bool(forKey: DefaultsKey.monitorSysBattery)
+        let panelCPU = (panelNeedsSystem && defaults.bool(forKey: DefaultsKey.monitorSysCPU)) || menuPanelNeeds.cpu
+        let panelGPU = (panelNeedsSystem && defaults.bool(forKey: DefaultsKey.monitorSysGPU)) || menuPanelNeeds.gpu
+        let panelMemory = (panelNeedsSystem && defaults.bool(forKey: DefaultsKey.monitorSysMemory)) || menuPanelNeeds.memory
+        let panelBattery = (panelNeedsSystem && defaults.bool(forKey: DefaultsKey.monitorSysBattery)) || menuPanelNeeds.battery
         let panelTemps = panelNeedsSystem && defaults.bool(forKey: DefaultsKey.monitorSysTemps)
         let alertCPU = defaults.bool(forKey: DefaultsKey.monitorAlertCPU)
         let alertCPUTemperature = defaults.bool(forKey: DefaultsKey.monitorAlertCPUTemperature)
@@ -348,9 +357,12 @@ final class SystemMonitor: ObservableObject {
             || alertBattery
         plan.needGPUUsage = panelGPU || defaults.bool(forKey: DefaultsKey.menuBarGPU)
         plan.gpuEveryTick = panelGPU
-        plan.needCPUTemperature = panelTemps || defaults.bool(forKey: DefaultsKey.menuBarCPUTemperature) || alertCPUTemperature
-        plan.needGPUTemperature = panelTemps || defaults.bool(forKey: DefaultsKey.menuBarGPUTemperature)
-        plan.needBatteryTemperature = panelTemps || defaults.bool(forKey: DefaultsKey.menuBarBatteryTemperature)
+        plan.needCPUTemperature = panelTemps || menuPanelNeeds.cpuTemperature ||
+            defaults.bool(forKey: DefaultsKey.menuBarCPUTemperature) || alertCPUTemperature
+        plan.needGPUTemperature = panelTemps || menuPanelNeeds.gpuTemperature ||
+            defaults.bool(forKey: DefaultsKey.menuBarGPUTemperature)
+        plan.needBatteryTemperature = panelTemps || menuPanelNeeds.batteryTemperature ||
+            defaults.bool(forKey: DefaultsKey.menuBarBatteryTemperature)
         return plan
     }
 

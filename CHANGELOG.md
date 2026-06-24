@@ -4,6 +4,41 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.1.2] - 2026-06-24
+
+### Summary
+Vorssaint 3.1.2 improves GIF handling in Media and Shelf, adds more Keep Awake control in the panel, lets Monitor metrics use separate menu bar items with focused detail views and expands the Volume Mixer with speaker protection and shortcut-based output switching.
+
+### Added
+- Keep Awake can now choose the active menu bar icon color directly from the
+  panel, including an option to keep the normal adaptive icon with no active
+  color.
+- Keep Awake can now start automatically when Vorssaint opens, if enabled from
+  the panel or Energy settings.
+- Monitor metrics can now use separate menu bar items, so each active metric can
+  be positioned independently on crowded or notched menu bars. Clicking a metric
+  opens a focused detail view for CPU, GPU, RAM, network, battery or power.
+- Volume Mixer can now lower speaker volume automatically when wired or
+  Bluetooth headphones disconnect, if enabled.
+- Volume Mixer can now cycle through selected system outputs with a global
+  shortcut, if enabled.
+
+### Changed
+- Monitor and Shelf now use lighter thumbnails and temporary caches, reducing
+  memory use while browsing metrics and dragging items.
+
+### Fixed
+- GIFs created by Media now stay visible in Finder, including outputs from
+  source files whose names start with a dot.
+- Panel sections and folded controls now open instantly without extra transition
+  animations.
+- Folded panel setup sections now open when clicking either the arrow or the
+  section title.
+- The System panel now shows the separate menu bar items control only when at
+  least one menu bar metric is active.
+- Shelf now preserves animated GIF data when macOS provides a GIF file or GIF
+  data, instead of flattening it into a still image.
+
 ## [3.1.1] - 2026-06-23
 
 ### Summary

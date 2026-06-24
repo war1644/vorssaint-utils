@@ -120,6 +120,7 @@ final class ShelfService: ObservableObject {
         .string,
         .tiff,
         .png,
+        NSPasteboard.PasteboardType(UTType.gif.identifier),
         NSPasteboard.PasteboardType("NSFilenamesPboardType"),
         NSPasteboard.PasteboardType("NSURLPboardType"),
         NSPasteboard.PasteboardType(UTType.fileURL.identifier),
@@ -281,6 +282,7 @@ final class ShelfService: ObservableObject {
             NSPasteboard.PasteboardType.string.rawValue,
             NSPasteboard.PasteboardType.tiff.rawValue,
             NSPasteboard.PasteboardType.png.rawValue,
+            UTType.gif.identifier,
             UTType.fileURL.identifier,
             UTType.image.identifier,
             UTType.url.identifier,
@@ -289,7 +291,7 @@ final class ShelfService: ObservableObject {
             "NSFilenamesPboardType",
             "NSURLPboardType"
         ]
-        let supportedUTTypes: [UTType] = [.fileURL, .image, .url, .text, .plainText]
+        let supportedUTTypes: [UTType] = [.fileURL, .gif, .image, .url, .text, .plainText]
 
         for item in items {
             for type in item.types {
@@ -344,6 +346,12 @@ final class ShelfService: ObservableObject {
                 _ = provider.loadObject(ofClass: URL.self) { [weak self] url, _ in
                     guard let url, url.isFileURL else { return }
                     DispatchQueue.main.async { self?.addFile(url) }
+                }
+            } else if provider.hasItemConformingToTypeIdentifier(UTType.gif.identifier) {
+                handled = true
+                _ = provider.loadDataRepresentation(forTypeIdentifier: UTType.gif.identifier) { [weak self] data, _ in
+                    guard let data, !data.isEmpty else { return }
+                    DispatchQueue.main.async { self?.addGIF(data: data) }
                 }
             } else if provider.canLoadObject(ofClass: NSImage.self) {
                 handled = true
@@ -535,6 +543,11 @@ final class ShelfService: ObservableObject {
         append(item)
     }
 
+    private func addGIF(data: Data) {
+        guard let item = gifItem(for: data) else { return }
+        append(item)
+    }
+
     private func addText(_ string: String) {
         guard let item = textItem(for: string) else { return }
         append(item)
@@ -547,19 +560,36 @@ final class ShelfService: ObservableObject {
     private func fileItem(for url: URL) -> Item {
         let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "gif", "heic", "heif", "tiff", "bmp", "webp"]
         let isImage = imageExtensions.contains(url.pathExtension.lowercased())
-        let icon = (isImage ? NSImage(contentsOf: url) : nil) ?? NSWorkspace.shared.icon(forFile: url.path)
+        let fallbackIcon = NSWorkspace.shared.icon(forFile: url.path)
+        let icon = (isImage ? ImageThumbnailer.thumbnail(for: url) : nil)
+            ?? ImageThumbnailer.thumbnail(for: fallbackIcon)
+            ?? fallbackIcon
         return Item(payload: .file(url), title: url.lastPathComponent, icon: icon, isImage: isImage)
     }
 
     private func imageItem(for image: NSImage) -> Item? {
         let url = tempDir.appendingPathComponent("\(UUID().uuidString).png")
-        if let tiff = image.tiffRepresentation,
-           let rep = NSBitmapImageRep(data: tiff),
-           let png = rep.representation(using: .png, properties: [:]) {
+        let icon = ImageThumbnailer.thumbnail(for: image) ?? symbol("photo")
+        if let png = autoreleasepool(invoking: { () -> Data? in
+            guard let tiff = image.tiffRepresentation,
+                  let rep = NSBitmapImageRep(data: tiff) else { return nil }
+            return rep.representation(using: .png, properties: [:])
+        }) {
             try? png.write(to: url)
-            return Item(payload: .file(url), title: L10n.shared.s.shelfItemImage, icon: image, isImage: true)
+            return Item(payload: .file(url), title: L10n.shared.s.shelfItemImage, icon: icon, isImage: true)
         }
         return nil
+    }
+
+    private func gifItem(for data: Data) -> Item? {
+        let url = tempDir.appendingPathComponent("\(UUID().uuidString).gif")
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            return nil
+        }
+        let icon = ImageThumbnailer.thumbnail(for: url) ?? symbol("photo")
+        return Item(payload: .file(url), title: "GIF", icon: icon, isImage: true)
     }
 
     private func textItem(for string: String) -> Item? {
@@ -590,6 +620,10 @@ final class ShelfService: ObservableObject {
         let fileURLs = fileURLs(from: pasteboard)
         if !fileURLs.isEmpty {
             return fileURLs.map { fileItem(for: $0) }
+        }
+        if let gif = gifData(from: pasteboard),
+           let item = gifItem(for: gif) {
+            return [item]
         }
         if let image = NSImage(pasteboard: pasteboard),
            let item = imageItem(for: image) {
@@ -623,7 +657,10 @@ final class ShelfService: ObservableObject {
         if !fileURLs(from: pasteboard).isEmpty {
             return true
         }
-        if NSImage(pasteboard: pasteboard) != nil {
+        if pasteboardHasGIF(pasteboard) {
+            return true
+        }
+        if pasteboardHasImage(pasteboard) {
             return true
         }
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [NSURL],
@@ -635,6 +672,36 @@ final class ShelfService: ObservableObject {
             return true
         }
         return false
+    }
+
+    private func gifData(from pasteboard: NSPasteboard) -> Data? {
+        for type in pasteboard.types ?? [] {
+            guard pasteboardTypeIsGIF(type),
+                  let data = pasteboard.data(forType: type),
+                  !data.isEmpty else {
+                continue
+            }
+            return data
+        }
+        return nil
+    }
+
+    private func pasteboardHasGIF(_ pasteboard: NSPasteboard) -> Bool {
+        (pasteboard.types ?? []).contains(where: pasteboardTypeIsGIF)
+    }
+
+    private func pasteboardHasImage(_ pasteboard: NSPasteboard) -> Bool {
+        for type in pasteboard.types ?? [] {
+            if pasteboardTypeIsGIF(type) { continue }
+            if type == .png || type == .tiff { return true }
+            if UTType(type.rawValue)?.conforms(to: .image) == true { return true }
+        }
+        return false
+    }
+
+    private func pasteboardTypeIsGIF(_ type: NSPasteboard.PasteboardType) -> Bool {
+        type.rawValue == UTType.gif.identifier
+            || UTType(type.rawValue)?.conforms(to: .gif) == true
     }
 
     private func unique(_ urls: [URL]) -> [URL] {

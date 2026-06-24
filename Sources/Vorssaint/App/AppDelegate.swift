@@ -13,12 +13,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     private var popoverLocalDismissMonitor: Any?
     private var popoverKeyboardMonitor: Any?
     private var popoverIsClosing = false
+    private var popoverIsSwitchingAnchor = false
+    private var metricAnchorSwitchSerial = 0
     private var popoverCloseCompletions: [() -> Void] = []
     private var isTerminating = false
     private var cancellables = Set<AnyCancellable>()
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
     private var dockPreviewIntroWindow: NSWindow?
+    private var supportIntroWindow: NSWindow?
     private var updatePreviewWindow: NSWindow?
     private let popoverOpenDuration: TimeInterval = 0.18
     private let popoverCloseDuration: TimeInterval = 0.14
@@ -40,8 +43,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         PanelLayout.resetCollapsedSectionsOnce(for: "2.15.1")
 
         statusController = StatusItemController()
-        statusController.onLeftClick = { [weak self] in self?.togglePopover() }
+        statusController.onLeftClick = { [weak self] in self?.toggleMainPopover() }
         statusController.onRightClick = { [weak self] in self?.showContextMenu() }
+        statusController.onMetricClick = { [weak self] metric, button in
+            self?.showMetricPanel(for: metric, anchoredTo: button)
+        }
 
         setUpPopover()
         bindManagers()
@@ -49,7 +55,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         HotkeyManager.shared.onActivate = { KeepAwakeManager.shared.toggle() }
         HotkeyManager.shared.syncWithPreferences()
 
-        KeepAwakeManager.shared.recoverIfNeeded()
+        KeepAwakeManager.shared.recoverIfNeeded {
+            KeepAwakeManager.shared.activateOnLaunchIfNeeded()
+        }
         AppActivationTracker.shared.start()
         ScrollInverter.shared.syncWithPreferences()
         AppSwitcher.shared.syncWithPreferences()
@@ -64,6 +72,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         MonitorAlertService.shared.start()
         AudioInputDeviceManager.shared.start()
         AppVolumeMixer.shared.start()
+        SoundOutputSwitcher.shared.syncWithPreferences()
         UpdateService.shared.startAutomaticChecks()
         NotificationCenter.default.addObserver(self, selector: #selector(appBecameActive),
                                                name: NSApplication.didBecomeActiveNotification, object: nil)
@@ -116,6 +125,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         URLCleanerService.shared.stop()
         WindowMaximizer.shared.stop()
         DockPreviewService.shared.stop()
+        SoundOutputSwitcher.shared.stop()
         AppVolumeMixer.shared.stopAll()
         KeepAwakeManager.shared.deactivate(reason: .quit)
     }
@@ -193,15 +203,123 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
                                                name: NSApplication.didResignActiveNotification, object: nil)
     }
 
-    private func togglePopover() {
+    private func togglePopover(anchor button: NSStatusBarButton? = nil) {
         if popover.isShown {
             closePopover()
             return
         }
+        showPopover(anchor: button)
+    }
+
+    private func toggleMainPopover() {
+        if !popover.isShown {
+            MenuPanelFocus.shared.showNormalPanel()
+        }
+        togglePopover()
+    }
+
+    private func showMetricPanel(for metric: MenuBarMetric, anchoredTo button: NSStatusBarButton) {
+        let detailKind = metric.detailKind
+        if popover.isShown {
+            if MenuPanelFocus.shared.activeMetric == detailKind {
+                metricAnchorSwitchSerial &+= 1
+                MenuPanelFocus.shared.clearMetricFocus()
+                closePopover(animated: false)
+                return
+            }
+            MenuPanelFocus.shared.focus(detailKind)
+            scheduleMetricAnchorSwitch(to: detailKind, anchoredTo: button)
+            return
+        }
+        MenuPanelFocus.shared.focus(detailKind)
+        showPopover(anchor: button)
+    }
+
+    private func scheduleMetricAnchorSwitch(to detailKind: MetricDetailKind, anchoredTo button: NSStatusBarButton) {
+        metricAnchorSwitchSerial &+= 1
+        let serial = metricAnchorSwitchSerial
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) { [weak self, weak button] in
+            guard let self,
+                  let button,
+                  self.popover.isShown,
+                  self.metricAnchorSwitchSerial == serial,
+                  MenuPanelFocus.shared.activeMetric == detailKind else { return }
+            self.reanchorMetricPopover(to: detailKind, anchoredTo: button)
+        }
+    }
+
+    private func reanchorMetricPopover(to detailKind: MetricDetailKind, anchoredTo button: NSStatusBarButton) {
+        guard popover.isShown else {
+            MenuPanelFocus.shared.focus(detailKind)
+            showPopover(anchor: button, allowRecentClose: true, animate: false, activate: false)
+            return
+        }
+        popoverIsSwitchingAnchor = true
+        MenuPanelFocus.shared.setSwitchingMetricAnchor(true)
+        let expectedMidX = statusButtonMidX(button)
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.makeKey()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self, weak button] in
+            guard let self,
+                  let button,
+                  self.popover.isShown,
+                  self.metricAnchorSwitchSerial > 0,
+                  MenuPanelFocus.shared.activeMetric == detailKind else {
+                self?.popoverIsSwitchingAnchor = false
+                MenuPanelFocus.shared.setSwitchingMetricAnchor(false)
+                return
+            }
+            if let expectedMidX,
+               let popoverMidX = self.popover.contentViewController?.view.window?.frame.midX,
+               abs(popoverMidX - expectedMidX) <= 34 {
+                self.popoverIsSwitchingAnchor = false
+                MenuPanelFocus.shared.setSwitchingMetricAnchor(false)
+                return
+            }
+            self.switchMetricPopover(to: detailKind, anchoredTo: button)
+        }
+    }
+
+    private func statusButtonMidX(_ button: NSStatusBarButton) -> CGFloat? {
+        guard let window = button.window else { return nil }
+        return window.convertToScreen(button.convert(button.bounds, to: nil)).midX
+    }
+
+    private func switchMetricPopover(to detailKind: MetricDetailKind, anchoredTo button: NSStatusBarButton) {
+        popoverIsSwitchingAnchor = true
+        MenuPanelFocus.shared.setSwitchingMetricAnchor(true)
+        removePopoverDismissMonitor()
+        popoverIsClosing = true
+        popover.performClose(nil)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) { [weak self, weak button] in
+            guard let self else {
+                MenuPanelFocus.shared.setSwitchingMetricAnchor(false)
+                return
+            }
+            guard let button else {
+                self.popoverIsSwitchingAnchor = false
+                MenuPanelFocus.shared.setSwitchingMetricAnchor(false)
+                return
+            }
+            self.popoverClosedAt = .distantPast
+            MenuPanelFocus.shared.focus(detailKind)
+            self.showPopover(anchor: button, allowRecentClose: true, animate: false, activate: false)
+            DispatchQueue.main.async {
+                self.popoverIsSwitchingAnchor = false
+                MenuPanelFocus.shared.setSwitchingMetricAnchor(false)
+            }
+        }
+    }
+
+    private func showPopover(anchor button: NSStatusBarButton? = nil,
+                             allowRecentClose: Bool = false,
+                             animate: Bool = true,
+                             activate: Bool = true) {
+        guard !popover.isShown else { return }
         // The click that just transient-dismissed the popover also lands here;
         // reopening would make the panel look impossible to close.
-        guard Date().timeIntervalSince(popoverClosedAt) > 0.35 else { return }
-        guard let button = statusController.button else { return }
+        guard allowRecentClose || Date().timeIntervalSince(popoverClosedAt) > 0.35 else { return }
+        guard let button = button ?? statusController.button else { return }
 
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         if let window = popover.contentViewController?.view.window {
@@ -213,9 +331,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             }
             window.contentView?.layoutSubtreeIfNeeded()
             window.makeKey()
-            animatePopoverOpen(window)
+            if animate {
+                animatePopoverOpen(window)
+            } else {
+                popoverIsClosing = false
+                window.alphaValue = 1
+            }
         }
-        NSApp.activate(ignoringOtherApps: true)
+        if activate {
+            NSApp.activate(ignoringOtherApps: true)
+        }
         // Only arm the dismiss monitor if the popover actually presented — otherwise
         // popoverDidClose never fires and the global monitor would leak indefinitely.
         guard popover.isShown else { return }
@@ -231,6 +356,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         ) { [weak self] _ in
             guard let self, self.popover.isShown else { return }
             guard !PanelInteractionState.shared.keepsPopoverOpen else { return }
+            guard self.statusController.containsStatusItem(at: NSEvent.mouseLocation) == false else { return }
             self.closePopover()
         }
 
@@ -319,6 +445,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         // Leaving the app entirely (e.g. ⌘Tab) dismisses the panel; switching to
         // our own Settings window keeps the app active, so it stays open.
         if popover.isShown, !PanelInteractionState.shared.keepsPopoverOpen {
+            guard statusController.containsStatusItem(at: NSEvent.mouseLocation) == false else { return }
             closePopover()
         }
     }
@@ -405,7 +532,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             NotificationCenter.default.post(name: .menuPanelWillShow, object: nil)
         }
         SystemMonitor.shared.suppressGPUReadsForTransientUI()
-        UpdateService.shared.checkIfStale()
+        if !popoverIsSwitchingAnchor {
+            UpdateService.shared.checkIfStale()
+        }
     }
 
     func popoverShouldClose(_ popover: NSPopover) -> Bool {
@@ -413,10 +542,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     }
 
     func popoverDidClose(_ notification: Notification) {
-        SystemMonitor.shared.setMenuPanelNeeds(.none)
+        if !popoverIsSwitchingAnchor {
+            SystemMonitor.shared.setMenuPanelNeeds(.none)
+        }
+        if !popoverIsSwitchingAnchor {
+            MenuPanelFocus.shared.clearMetricFocus()
+            ProcessUsageService.shared.clearCachedRows()
+            ResponsibleProcess.clearIconCache()
+        }
         removePopoverDismissMonitor()
         PanelInteractionState.shared.keepsPopoverOpen = false
-        popoverClosedAt = Date()
+        popoverClosedAt = popoverIsSwitchingAnchor ? .distantPast : Date()
         popoverIsClosing = false
         runPopoverCloseCompletions()
     }
@@ -769,7 +905,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     /// On launch after an update, do not re-open What's New: every update path
     /// shows the changelog before download. Keep only one-off feature intros.
     private func presentUpdateIntros() {
+        if showSupportUpdateIntroIfNeeded() { return }
         showDockPreviewIntroIfNeeded()
+    }
+
+    private func showSupportUpdateIntroIfNeeded() -> Bool {
+        guard AppInfo.version == SupportUpdateIntroInfo.releaseVersion else { return false }
+        guard UserDefaults.standard.string(forKey: DefaultsKey.supportUpdateIntroVersion)
+                != SupportUpdateIntroInfo.releaseVersion else { return false }
+        showSupportUpdateIntro()
+        return true
+    }
+
+    private func showSupportUpdateIntro() {
+        closePopover()
+        if let window = supportIntroWindow {
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
+            return
+        }
+        let host = NSHostingController(rootView: UpdateSupportIntroView(
+            onClose: { [weak self] in
+                self?.markSupportUpdateIntroSeen()
+                self?.supportIntroWindow?.close()
+            }
+        ))
+        host.sizingOptions = .preferredContentSize
+        let window = NSWindow(contentViewController: host)
+        window.title = L10n.shared.s.supportIntroTitle
+        window.styleMask = [.titled, .closable, .fullSizeContentView]
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.isReleasedWhenClosed = false
+        window.isRestorable = false
+        window.isMovableByWindowBackground = true
+        window.delegate = self
+        centerSupportIntroWindow(window)
+        supportIntroWindow = window
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let self, let window, window === self.supportIntroWindow else { return }
+            self.centerSupportIntroWindow(window)
+        }
     }
 
     /// True on the release that introduced Dock Preview, or any later one.
@@ -876,6 +1054,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         window.setFrame(frame.integral, display: false)
     }
 
+    private func centerSupportIntroWindow(_ window: NSWindow) {
+        window.contentView?.layoutSubtreeIfNeeded()
+        let screen = window.screen ?? popover.contentViewController?.view.window?.screen ?? NSScreen.withMouse
+        let visible = screen.visibleFrame
+        let margin: CGFloat = 40
+        let availableWidth = max(1, visible.width - margin)
+        let availableHeight = max(1, visible.height - margin)
+        let width = min(max(window.frame.width, 560), availableWidth)
+        let height = min(max(window.frame.height, 430), availableHeight)
+        let frame = NSRect(x: visible.midX - width / 2,
+                           y: visible.midY - height / 2,
+                           width: width,
+                           height: height)
+        window.setFrame(frame.integral, display: false)
+    }
+
     /// The pre-install update preview, shown before any download from BOTH the
     /// Settings install button and the menu panel's update banner (the blue
     /// button most people use), so the changelog is always seen first. In the
@@ -937,6 +1131,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             guard !isTerminating else { return }
             markDockPreviewIntroSeen()
         }
+        if window === supportIntroWindow {
+            supportIntroWindow = nil
+            guard !isTerminating else { return }
+            markSupportUpdateIntroSeen()
+        }
         if window === updatePreviewWindow {
             updatePreviewWindow = nil
         }
@@ -949,6 +1148,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         UserDefaults.standard.set(OnboardingInfo.currentFeatureSet, forKey: DefaultsKey.featuresOnboardingVersion)
         UserDefaults.standard.set(AppInfo.version, forKey: DefaultsKey.lastUpdateIntroVersion)
         markDockPreviewIntroSeenIfCurrentUpdate()
+        markSupportUpdateIntroSeenIfCurrentUpdate()
     }
 
     private func markDockPreviewIntroSeenIfCurrentUpdate() {
@@ -960,5 +1160,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
 
     private func markDockPreviewIntroSeen() {
         UserDefaults.standard.set(AppInfo.version, forKey: DefaultsKey.dockPreviewIntroVersion)
+    }
+
+    private func markSupportUpdateIntroSeenIfCurrentUpdate() {
+        guard AppInfo.version == SupportUpdateIntroInfo.releaseVersion else { return }
+        markSupportUpdateIntroSeen()
+    }
+
+    private func markSupportUpdateIntroSeen() {
+        UserDefaults.standard.set(SupportUpdateIntroInfo.releaseVersion,
+                                  forKey: DefaultsKey.supportUpdateIntroVersion)
     }
 }

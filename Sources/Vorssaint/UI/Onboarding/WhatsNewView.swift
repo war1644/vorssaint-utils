@@ -114,6 +114,81 @@ struct UpdatePreviewView: View {
     }
 }
 
+/// A one-time note for the 3.1.2 launch after update. It is intentionally not a
+/// release note, so the normal changelog preview remains unchanged before download.
+struct UpdateSupportIntroView: View {
+    var onClose: () -> Void
+
+    @ObservedObject private var l10n = L10n.shared
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(Theme.spaceGradient)
+                        .frame(width: 74, height: 74)
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 28, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+
+                Text(l10n.s.supportIntroTitle)
+                    .font(.system(size: 22, weight: .bold))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(l10n.s.supportIntroMessage)
+                    .font(.system(size: 13.5))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 430)
+
+                HStack(spacing: 10) {
+                    Button {
+                        openURL(AppInfo.repositoryURL)
+                    } label: {
+                        Label(l10n.s.supportIntroStarButton, systemImage: "star.fill")
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Button {
+                        openURL(AppInfo.donateURL)
+                    } label: {
+                        Label(l10n.s.supportIntroCoffeeButton, systemImage: "cup.and.saucer.fill")
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .padding(.top, 4)
+
+                Text(l10n.s.donateThanks)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 2)
+            }
+            .padding(.horizontal, 34)
+            .padding(.top, 34)
+            .padding(.bottom, 28)
+
+            Divider()
+
+            HStack {
+                Spacer()
+                Button(l10n.s.supportIntroLaterButton) {
+                    onClose()
+                }
+                .keyboardShortcut(.defaultAction)
+                .controlSize(.large)
+            }
+            .padding(16)
+        }
+        .frame(width: 560, height: 430)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+}
+
 /// Renders one or more parsed release-note versions, each with a prominent
 /// version header and the Added / Changed / Fixed sections, separated by a
 /// divider so the newest update is easy to tell apart from older ones (the

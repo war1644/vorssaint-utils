@@ -37,6 +37,20 @@ enum MenuBarMetric: String, CaseIterable, Identifiable {
         }
     }
 
+    func title(_ strings: Strings) -> String {
+        switch self {
+        case .cpu: return strings.monitorShowCPU
+        case .gpu: return strings.monitorShowGPU
+        case .memory: return strings.monitorShowMemory
+        case .cpuTemperature: return strings.monitorShowCPUTemperature
+        case .gpuTemperature: return strings.monitorShowGPUTemperature
+        case .batteryTemperature: return strings.monitorShowBatteryTemperature
+        case .network: return strings.monitorShowNetwork
+        case .battery: return strings.batteryLabel
+        case .power: return strings.monitorShowPowerLabel
+        }
+    }
+
     static let defaultOrder: [MenuBarMetric] = [
         .cpu, .cpuTemperature,
         .gpu, .gpuTemperature,

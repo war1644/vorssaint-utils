@@ -97,6 +97,13 @@ final class KeepAwakeManager: ObservableObject {
         }
     }
 
+    func activateOnLaunchIfNeeded() {
+        guard UserDefaults.standard.bool(forKey: DefaultsKey.keepAwakeAutoStart),
+              !isActive else { return }
+        activate(minutes: Defaults.sanitizedDefaultDuration(
+            UserDefaults.standard.integer(forKey: DefaultsKey.defaultDuration)))
+    }
+
     func extend(minutes: Int) {
         guard isActive, let current = endDate else { return }
         let newEnd = max(current, Date()).addingTimeInterval(TimeInterval(minutes) * 60)
@@ -281,8 +288,11 @@ final class KeepAwakeManager: ObservableObject {
 
     /// If the app died unexpectedly while sleep was disabled, restores normal
     /// behavior on the next launch.
-    func recoverIfNeeded() {
-        guard UserDefaults.standard.bool(forKey: DefaultsKey.sleepDisabledFlag) else { return }
+    func recoverIfNeeded(completion: (() -> Void)? = nil) {
+        guard UserDefaults.standard.bool(forKey: DefaultsKey.sleepDisabledFlag) else {
+            completion?()
+            return
+        }
         DispatchQueue.global(qos: .utility).async {
             let out = Shell.run("/usr/bin/pmset", ["-g"]).output
             let stillDisabled = out.range(of: #"SleepDisabled\s+1"#, options: .regularExpression) != nil
@@ -290,20 +300,23 @@ final class KeepAwakeManager: ObservableObject {
                 // Silent recovery through the password-free path.
                 DispatchQueue.main.async {
                     UserDefaults.standard.set(false, forKey: DefaultsKey.sleepDisabledFlag)
+                    completion?()
                 }
                 return
             }
             DispatchQueue.main.async {
                 if stillDisabled {
                     AdminShell.run("pmset disablesleep 0", prompt: L10n.shared.s.adminPromptRecover) { ok in
-                        if ok {
-                            DispatchQueue.main.async {
+                        DispatchQueue.main.async {
+                            if ok {
                                 UserDefaults.standard.set(false, forKey: DefaultsKey.sleepDisabledFlag)
                             }
+                            completion?()
                         }
                     }
                 } else {
                     UserDefaults.standard.set(false, forKey: DefaultsKey.sleepDisabledFlag)
+                    completion?()
                 }
             }
         }

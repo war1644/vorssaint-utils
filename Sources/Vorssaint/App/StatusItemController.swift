@@ -9,11 +9,23 @@ import Combine
 final class StatusItemController {
     var onLeftClick: (() -> Void)?
     var onRightClick: (() -> Void)?
+    var onMetricClick: ((MenuBarMetric, NSStatusBarButton) -> Void)?
 
     private(set) var statusItem: NSStatusItem!
+    private var metricStatusItems: [String: NSStatusItem] = [:]
+    private var metricStatusItemFocus: [String: MenuBarMetric] = [:]
     private var cancellables = Set<AnyCancellable>()
     private var titleTimer: Timer?
     private var defaultsObserver: NSObjectProtocol?
+    private static let mainAutosaveName = "VorssaintMenuBarItem"
+    private static let metricAutosavePrefix = "VorssaintMetric"
+
+    private struct MetricStatusGroup {
+        let id: String
+        let metrics: [MenuBarMetric]
+        let focusMetric: MenuBarMetric
+        let title: String
+    }
 
     /// Cached so the countdown tooltip doesn't allocate a DateFormatter (expensive)
     /// on every refresh while a keep-awake session is active.
@@ -24,6 +36,14 @@ final class StatusItemController {
     }()
 
     var button: NSStatusBarButton? { statusItem.button }
+
+    func containsStatusItem(at screenPoint: NSPoint) -> Bool {
+        let buttons = ([statusItem?.button] + metricStatusItems.values.map(\.button)).compactMap { $0 }
+        return buttons.contains { button in
+            guard let frame = button.window?.frame else { return false }
+            return frame.insetBy(dx: -4, dy: -8).contains(screenPoint)
+        }
+    }
 
     init() {
         installStatusItem()
@@ -45,7 +65,7 @@ final class StatusItemController {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         // A stable identity so macOS remembers the item's position across launches
         // and across rebuilds, instead of re-placing it at the crowded default spot.
-        statusItem.autosaveName = "VorssaintMenuBarItem"
+        statusItem.autosaveName = Self.mainAutosaveName
         statusItem.behavior = []
         statusItem.isVisible = true
         if let button = statusItem.button {
@@ -108,6 +128,7 @@ final class StatusItemController {
                                                                   object: nil,
                                                                   queue: .main) { [weak self] _ in
             self?.syncMonitorMode()
+            self?.updateIconAppearance()
             self?.refresh()
         }
     }
@@ -118,6 +139,9 @@ final class StatusItemController {
         // a block observer that outlives this instance.
         titleTimer?.invalidate()
         if let defaultsObserver { NotificationCenter.default.removeObserver(defaultsObserver) }
+        for item in metricStatusItems.values {
+            NSStatusBar.system.removeStatusItem(item)
+        }
     }
 
     /// Keeps the background sampler in step with the menu bar settings: it runs
@@ -154,6 +178,9 @@ final class StatusItemController {
         let manager = KeepAwakeManager.shared
         let strings = L10n.shared.s
         let defaults = UserDefaults.standard
+        let snapshot = SystemMonitor.shared.snapshot
+        let metrics = MenuBarMetric.enabled(in: defaults)
+        let separateMetrics = defaults.bool(forKey: DefaultsKey.menuBarSeparateMetrics)
 
         // Compose the title from the keep-awake countdown (when shown) followed by
         // the pinned live metrics. Built attributed so the memory pressure dot can
@@ -173,9 +200,13 @@ final class StatusItemController {
             title.append(NSAttributedString(string: countdown))
             includesCountdown = true
         }
-        let metrics = MenuBarMetric.enabled(in: defaults)
-        if !metrics.isEmpty {
-            let metricsTitle = MenuBarRenderer.attributed(for: SystemMonitor.shared.snapshot,
+        if separateMetrics {
+            refreshMetricStatusItems(metrics: metrics, snapshot: snapshot, strings: strings)
+        } else {
+            removeMetricStatusItems(except: Set<String>())
+        }
+        if !separateMetrics, !metrics.isEmpty {
+            let metricsTitle = MenuBarRenderer.attributed(for: snapshot,
                                                           metrics: metrics,
                                                           allowStacked: !includesCountdown,
                                                           linePrefix: " ")
@@ -224,10 +255,152 @@ final class StatusItemController {
             button.toolTip = strings.statusIdleTooltip
         }
     }
+
+    private func refreshMetricStatusItems(metrics: [MenuBarMetric],
+                                          snapshot: SystemSnapshot,
+                                          strings: Strings) {
+        let groups = metricStatusGroups(for: metrics, strings: strings)
+        let wanted = Set(groups.map(\.id))
+        removeMetricStatusItems(except: wanted)
+
+        for group in groups {
+            let title = MenuBarRenderer.attributed(for: snapshot,
+                                                   metrics: group.metrics,
+                                                   allowStacked: false)
+            guard title.length > 0 else {
+                removeMetricStatusItem(for: group.id)
+                continue
+            }
+
+            metricStatusItemFocus[group.id] = group.focusMetric
+            let item = metricStatusItems[group.id] ?? installMetricStatusItem(for: group)
+            item.length = NSStatusItem.variableLength
+            guard let button = item.button else { continue }
+
+            let full = NSMutableAttributedString(attributedString: title)
+            full.addAttribute(.font,
+                              value: MenuBarRenderer.statusFont(stacked: false),
+                              range: NSRange(location: 0, length: full.length))
+            button.font = MenuBarRenderer.statusFont(stacked: false)
+            button.attributedTitle = full
+            button.image = nil
+            button.imagePosition = .noImage
+            button.toolTip = group.title
+        }
+    }
+
+    private func metricStatusGroups(for metrics: [MenuBarMetric], strings: Strings) -> [MetricStatusGroup] {
+        guard UserDefaults.standard.bool(forKey: DefaultsKey.menuBarCombineTemperatures) else {
+            return metrics.map {
+                MetricStatusGroup(id: $0.rawValue, metrics: [$0], focusMetric: $0, title: $0.title(strings))
+            }
+        }
+
+        let enabled = Set(metrics)
+        var emittedIDs = Set<String>()
+        var groups: [MetricStatusGroup] = []
+
+        func appendComponentGroup(id: String,
+                                  primary: MenuBarMetric,
+                                  temperature: MenuBarMetric,
+                                  primaryTitle: String) {
+            guard emittedIDs.insert(id).inserted else { return }
+            var groupedMetrics: [MenuBarMetric] = []
+            if enabled.contains(primary) { groupedMetrics.append(primary) }
+            if enabled.contains(temperature) { groupedMetrics.append(temperature) }
+            guard let focusMetric = groupedMetrics.first else { return }
+            let title = groupedMetrics.count > 1 ? primaryTitle : focusMetric.title(strings)
+            groups.append(MetricStatusGroup(id: id,
+                                            metrics: groupedMetrics,
+                                            focusMetric: focusMetric,
+                                            title: title))
+        }
+
+        for metric in metrics {
+            switch metric {
+            case .cpu, .cpuTemperature:
+                appendComponentGroup(id: "cpu",
+                                     primary: .cpu,
+                                     temperature: .cpuTemperature,
+                                     primaryTitle: strings.monitorShowCPU)
+            case .gpu, .gpuTemperature:
+                appendComponentGroup(id: "gpu",
+                                     primary: .gpu,
+                                     temperature: .gpuTemperature,
+                                     primaryTitle: strings.monitorShowGPU)
+            case .battery, .batteryTemperature:
+                appendComponentGroup(id: "battery",
+                                     primary: .battery,
+                                     temperature: .batteryTemperature,
+                                     primaryTitle: strings.batteryLabel)
+            case .memory, .network, .power:
+                let id = metric.rawValue
+                guard emittedIDs.insert(id).inserted else { continue }
+                groups.append(MetricStatusGroup(id: id,
+                                                metrics: [metric],
+                                                focusMetric: metric,
+                                                title: metric.title(strings)))
+            }
+        }
+
+        return groups
+    }
+
+    private func installMetricStatusItem(for group: MetricStatusGroup) -> NSStatusItem {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.autosaveName = "\(Self.metricAutosavePrefix).\(group.id)"
+        item.behavior = []
+        item.isVisible = true
+        if let button = item.button {
+            button.font = MenuBarRenderer.statusFont(stacked: false)
+            button.alignment = .left
+            button.cell?.lineBreakMode = .byClipping
+            button.cell?.usesSingleLineMode = true
+            button.target = self
+            button.action = #selector(metricClicked(_:))
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            button.identifier = NSUserInterfaceItemIdentifier("\(Self.metricAutosavePrefix).\(group.id)")
+        }
+        metricStatusItems[group.id] = item
+        metricStatusItemFocus[group.id] = group.focusMetric
+        return item
+    }
+
+    @objc private func metricClicked(_ sender: NSStatusBarButton) {
+        if NSApp.currentEvent?.type == .rightMouseUp {
+            onRightClick?()
+            return
+        }
+        guard let metric = focusMetric(from: sender) else {
+            onLeftClick?()
+            return
+        }
+        onMetricClick?(metric, sender)
+    }
+
+    private func focusMetric(from button: NSStatusBarButton) -> MenuBarMetric? {
+        let prefix = "\(Self.metricAutosavePrefix)."
+        guard let identifier = button.identifier?.rawValue,
+              identifier.hasPrefix(prefix) else { return nil }
+        return metricStatusItemFocus[String(identifier.dropFirst(prefix.count))]
+    }
+
+    private func removeMetricStatusItems(except wanted: Set<String>) {
+        let staleMetrics = metricStatusItems.keys.filter { !wanted.contains($0) }
+        for id in staleMetrics {
+            removeMetricStatusItem(for: id)
+        }
+    }
+
+    private func removeMetricStatusItem(for id: String) {
+        metricStatusItemFocus.removeValue(forKey: id)
+        guard let item = metricStatusItems.removeValue(forKey: id) else { return }
+        NSStatusBar.system.removeStatusItem(item)
+    }
 }
 
 /// The official mark, bundled as a template image so the idle state adapts to
-/// light and dark menu bars. Active states use real colors for attention.
+/// light and dark menu bars. Active states can use real colors for attention.
 enum BlackHoleGlyph {
     /// Logical size of the glyph in the menu bar, in points.
     private static let pointSize = NSSize(width: 20, height: 14)
@@ -250,14 +423,16 @@ enum BlackHoleGlyph {
     }()
 
     static func image(active: Bool) -> NSImage? {
-        guard let base else { return fallback(active: active) }
-        return active ? awakeImage() ?? base : base
+        let tint = KeepAwakeIconTint.current
+        guard let base else { return fallback(active: active && tint != .none) }
+        guard active else { return base }
+        guard tint != .none else { return base }
+        return awakeImage(tint: tint) ?? base
     }
 
-    /// Amber marks an active keep-awake session so it is easier to notice at a
-    /// glance than the normal adaptive menu bar icon.
-    static func awakeImage() -> NSImage? {
-        tintedImage(color: .systemOrange) ?? fallback(active: true)
+    static func awakeImage(tint: KeepAwakeIconTint = .orange) -> NSImage? {
+        guard let color = color(for: tint) else { return base ?? fallback(active: false) }
+        return tintedImage(color: color) ?? fallback(active: true)
     }
 
     /// A blue, full-strength glyph used to flag an available update. Non-template
@@ -276,6 +451,17 @@ enum BlackHoleGlyph {
         }
         tinted.isTemplate = false
         return tinted
+    }
+
+    private static func color(for tint: KeepAwakeIconTint) -> NSColor? {
+        switch tint {
+        case .orange: return .systemOrange
+        case .green: return .systemGreen
+        case .blue: return .systemBlue
+        case .purple: return .systemPurple
+        case .pink: return .systemPink
+        case .none: return nil
+        }
     }
 
     /// Keeps a recognizable presence if the bundled asset is ever missing

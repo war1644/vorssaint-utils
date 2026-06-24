@@ -21,11 +21,22 @@ struct SystemSection: View {
     @State private var breakdownRows: [ProcessUsage] = []
     @State private var breakdownIsLoading = false
     @State private var lastBreakdownRefresh = Date.distantPast
+    private let breakdownLimit = 15
     @AppStorage(DefaultsKey.monitorGraphCPU) private var graphCPU = true
     @AppStorage(DefaultsKey.monitorGraphGPU) private var graphGPU = true
     @AppStorage(DefaultsKey.monitorGraphMemory) private var graphMemory = true
     @AppStorage(DefaultsKey.monitorGraphBattery) private var graphBattery = true
     @AppStorage(DefaultsKey.temperatureUnit) private var temperatureUnit = TemperatureUnit.celsius.rawValue
+    @AppStorage(DefaultsKey.menuBarCPU) private var menuBarCPU = false
+    @AppStorage(DefaultsKey.menuBarGPU) private var menuBarGPU = false
+    @AppStorage(DefaultsKey.menuBarMemory) private var menuBarMemory = false
+    @AppStorage(DefaultsKey.menuBarCPUTemperature) private var menuBarCPUTemperature = false
+    @AppStorage(DefaultsKey.menuBarGPUTemperature) private var menuBarGPUTemperature = false
+    @AppStorage(DefaultsKey.menuBarBatteryTemperature) private var menuBarBatteryTemperature = false
+    @AppStorage(DefaultsKey.menuBarNetwork) private var menuBarNetwork = false
+    @AppStorage(DefaultsKey.menuBarBattery) private var menuBarBattery = false
+    @AppStorage(DefaultsKey.menuBarPower) private var menuBarPower = false
+    @AppStorage(DefaultsKey.menuBarSeparateMetrics) private var separateMenuBarMetrics = false
     @AppStorage(DefaultsKey.monitorSysTemps) private var sysTemps = true
     @AppStorage(DefaultsKey.monitorSysCPU) private var sysCPU = true
     @AppStorage(DefaultsKey.monitorSysGPU) private var sysGPU = true
@@ -41,7 +52,14 @@ struct SystemSection: View {
                      supportsEditing: true,
                      resetAction: resetPanelDefaults) { editing in
             VStack(alignment: .leading, spacing: 10) {
-                ForEach(Array(blocks(editing: editing).enumerated()), id: \.element) { index, block in
+                let currentBlocks = blocks(editing: editing)
+                if hasMenuBarMetric {
+                    menuBarMetricModeControl
+                    if !currentBlocks.isEmpty {
+                        Divider()
+                    }
+                }
+                ForEach(Array(currentBlocks.enumerated()), id: \.element) { index, block in
                     if index > 0 { Divider() }
                     PanelReorderableItem(item: block,
                                          isEnabled: editing,
@@ -70,6 +88,30 @@ struct SystemSection: View {
             breakdownRows = []
             breakdownIsLoading = false
         }
+    }
+
+    private var menuBarMetricModeControl: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Toggle(l10n.s.monitorSeparateMenuBarMetrics, isOn: $separateMenuBarMetrics)
+                .toggleStyle(.checkbox)
+                .font(.system(size: 11.5, weight: .medium))
+            Text(l10n.s.monitorSeparateMenuBarMetricsCaption)
+                .font(.system(size: 9.5))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var hasMenuBarMetric: Bool {
+        menuBarCPU ||
+        menuBarGPU ||
+        menuBarMemory ||
+        menuBarCPUTemperature ||
+        menuBarGPUTemperature ||
+        menuBarBatteryTemperature ||
+        menuBarNetwork ||
+        menuBarBattery ||
+        menuBarPower
     }
 
     /// Card subsections, in order, filtered by the per-item toggles (and whether a
@@ -143,7 +185,7 @@ struct SystemSection: View {
             breakdownIsLoading = false
         } else {
             expanded = kind
-            breakdownRows = []
+            breakdownRows = ProcessUsageService.shared.cachedTop(kind, limit: breakdownLimit) ?? []
             refreshBreakdown()
         }
     }
@@ -151,19 +193,15 @@ struct SystemSection: View {
     private func refreshBreakdown() {
         guard let kind = expanded else { return }
         lastBreakdownRefresh = Date()
-        breakdownIsLoading = true
-        DispatchQueue.global(qos: .userInitiated).async {
-            let rows: [ProcessUsage]
-            switch kind {
-            case .cpu: rows = ProcessUsageService.shared.topCPU()
-            case .gpu: rows = ProcessUsageService.shared.topGPU()
-            case .memory: rows = ProcessUsageService.shared.topMemory()
-            case .energy: rows = ProcessUsageService.shared.topEnergy()
-            }
+        breakdownIsLoading = breakdownRows.isEmpty
+        DispatchQueue.global(qos: .utility).async {
+            let rows = ProcessUsageService.shared.top(kind, limit: breakdownLimit)
             DispatchQueue.main.async {
                 guard expanded == kind else { return }
                 breakdownIsLoading = false
-                breakdownRows = rows
+                if !rows.isEmpty || breakdownRows.isEmpty {
+                    breakdownRows = rows
+                }
             }
         }
     }
@@ -197,7 +235,6 @@ struct SystemSection: View {
                     }
                 }
             }
-            .transition(.opacity)
         }
     }
 
@@ -258,7 +295,6 @@ struct SystemSection: View {
             Text(value.map { MetricFormat.temperature($0, unit: displayTemperatureUnit) } ?? "-")
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .monospacedDigit()
-                .contentTransition(.numericText())
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 6)
@@ -356,7 +392,7 @@ struct SystemSection: View {
 
     private var energyAppsHeader: some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.15)) { toggleBreakdown(.energy) }
+            toggleBreakdown(.energy)
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "chevron.right")
@@ -420,7 +456,7 @@ struct SystemSection: View {
                 }
             } else {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.15)) { toggleBreakdown(kind) }
+                    toggleBreakdown(kind)
                 } label: {
                     usageRowContent(label: label, fraction: fraction, kind: kind, isInteractive: true) {
                         EmptyView()
@@ -477,7 +513,7 @@ struct SystemSection: View {
                     memoryRowContent(isInteractive: false)
                 } else {
                     Button {
-                        withAnimation(.easeInOut(duration: 0.15)) { toggleBreakdown(.memory) }
+                        toggleBreakdown(.memory)
                     } label: {
                         memoryRowContent(isInteractive: true)
                             .contentShape(Rectangle())
@@ -534,9 +570,7 @@ struct SystemSection: View {
             VStack(alignment: .leading, spacing: 7) {
                 HStack(spacing: 6) {
                     Button {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            alertsExpanded.toggle()
-                        }
+                        alertsExpanded.toggle()
                     } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "chevron.right")
@@ -555,7 +589,6 @@ struct SystemSection: View {
                 }
                 if alertsExpanded {
                     MonitorAlertsControls(compact: true)
-                        .transition(.opacity)
                 }
             }
         }
@@ -580,7 +613,6 @@ private struct UsageBar: View {
                 Capsule()
                     .fill(tint ?? barColor)
                     .frame(width: max(3, proxy.size.width * min(1, fraction)))
-                    .animation(.easeOut(duration: 0.4), value: fraction)
             }
         }
         .frame(height: 5)

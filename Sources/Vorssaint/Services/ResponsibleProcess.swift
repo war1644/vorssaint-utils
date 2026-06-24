@@ -10,7 +10,8 @@ import Darwin
 enum ResponsibleProcess {
     private static let iconCache: NSCache<NSNumber, NSImage> = {
         let cache = NSCache<NSNumber, NSImage>()
-        cache.countLimit = 200
+        cache.countLimit = 80
+        cache.totalCostLimit = ImageThumbnailer.estimatedBitmapCost() * 80
         return cache
     }()
 
@@ -48,9 +49,47 @@ enum ResponsibleProcess {
     static func icon(for pid: pid_t) -> NSImage {
         let key = NSNumber(value: pid)
         if let cached = iconCache.object(forKey: key) { return cached }
-        let image = NSRunningApplication(processIdentifier: pid)?.icon
+        if isCurrentApp(pid: pid), let image = currentAppIcon() {
+            iconCache.setObject(image, forKey: key, cost: ImageThumbnailer.estimatedBitmapCost())
+            return image
+        }
+        let source = NSRunningApplication(processIdentifier: pid)?.icon
             ?? NSWorkspace.shared.icon(for: .unixExecutable)
-        iconCache.setObject(image, forKey: key)
+        let image = ImageThumbnailer.thumbnail(for: source) ?? source
+        iconCache.setObject(image, forKey: key, cost: ImageThumbnailer.estimatedBitmapCost())
         return image
+    }
+
+    static func clearIconCache() {
+        iconCache.removeAllObjects()
+    }
+
+    private static func isCurrentApp(pid: pid_t) -> Bool {
+        guard let app = NSRunningApplication(processIdentifier: pid) else { return false }
+        if let bundleIdentifier = app.bundleIdentifier,
+           bundleIdentifier == Bundle.main.bundleIdentifier {
+            return true
+        }
+        return app.bundleURL?.standardizedFileURL == Bundle.main.bundleURL.standardizedFileURL
+    }
+
+    private static func currentAppIcon() -> NSImage? {
+        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+           let image = ImageThumbnailer.thumbnail(for: url) {
+            return image
+        }
+        if let url = Bundle.main.url(forResource: "BrandMark", withExtension: "png"),
+           let image = ImageThumbnailer.thumbnail(for: url) {
+            return image
+        }
+        if let url = Bundle.main.url(forResource: "MenuBarIcon@2x", withExtension: "png"),
+           let image = ImageThumbnailer.thumbnail(for: url) {
+            return image
+        }
+        if let url = Bundle.main.url(forResource: "MenuBarIcon", withExtension: "png"),
+           let image = ImageThumbnailer.thumbnail(for: url) {
+            return image
+        }
+        return nil
     }
 }

@@ -9,6 +9,7 @@ import SwiftUI
 /// Designed to live inside a `Form` (grouped style) in both places.
 struct MonitorPanelConfig: View {
     @ObservedObject private var l10n = L10n.shared
+    @State private var expandedBlocks = Set<PanelConfigBlock>()
 
     @AppStorage(DefaultsKey.monitorShowSystem) private var showSystem = true
     @AppStorage(DefaultsKey.monitorSysTemps) private var sysTemps = true
@@ -39,7 +40,7 @@ struct MonitorPanelConfig: View {
     @AppStorage(DefaultsKey.monitorShowMixer) private var showMixer = true
 
     var body: some View {
-        block(title: l10n.s.systemSection, master: $showSystem) {
+        block(.system, title: l10n.s.systemSection, master: $showSystem) {
             Toggle(l10n.s.temperatures, isOn: $sysTemps)
             Toggle(l10n.s.cpuLabel, isOn: $sysCPU)
             Toggle(l10n.s.gpuLabel, isOn: $sysGPU)
@@ -47,19 +48,19 @@ struct MonitorPanelConfig: View {
             Toggle(l10n.s.memorySection, isOn: $sysMemory)
             Toggle(l10n.s.monitorItemUptime, isOn: $sysUptime)
         }
-        block(title: l10n.s.networkSection, master: $showNetwork) {
+        block(.network, title: l10n.s.networkSection, master: $showNetwork) {
             Toggle(l10n.s.monitorItemNetSpeed, isOn: $netSpeed)
             Toggle(l10n.s.monitorItemNetTotals, isOn: $netTotals)
             Toggle(l10n.s.monitorItemNetTest, isOn: $netTest)
         }
-        block(title: l10n.s.diskSection, master: $showDisk) {
+        block(.disk, title: l10n.s.diskSection, master: $showDisk) {
             Toggle(l10n.s.monitorItemDiskUsage, isOn: $diskUsage)
             Toggle(l10n.s.monitorItemDiskActivity, isOn: $diskActivity)
             Toggle(l10n.s.monitorItemDiskSMART, isOn: $diskSMART)
             Toggle(l10n.s.monitorItemDiskProtection, isOn: $diskProtection)
             Toggle(l10n.s.monitorItemDiskTools, isOn: $diskTools)
         }
-        block(title: l10n.s.powerSection, master: $showPower) {
+        block(.power, title: l10n.s.powerSection, master: $showPower) {
             Toggle(l10n.s.powerSystem, isOn: $pwrSystem)
             Toggle(l10n.s.powerAdapter, isOn: $pwrAdapter)
             Toggle(l10n.s.powerBattery, isOn: $pwrBattery)
@@ -72,12 +73,49 @@ struct MonitorPanelConfig: View {
     /// One expandable section: a master "show in panel" toggle, then the per-item
     /// toggles (disabled while the whole block is hidden).
     @ViewBuilder
-    private func block<Content: View>(title: String, master: Binding<Bool>,
+    private func block<Content: View>(_ id: PanelConfigBlock,
+                                      title: String,
+                                      master: Binding<Bool>,
                                       @ViewBuilder _ items: @escaping () -> Content) -> some View {
-        DisclosureGroup(title) {
+        DisclosureGroup(isExpanded: expansionBinding(for: id)) {
             Toggle(l10n.s.monitorShowInPanel, isOn: master)
             items()
                 .disabled(!master.wrappedValue)
+        } label: {
+            HStack {
+                Text(title)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                toggle(id)
+            }
         }
     }
+
+    private func expansionBinding(for id: PanelConfigBlock) -> Binding<Bool> {
+        Binding(
+            get: { expandedBlocks.contains(id) },
+            set: { expanded in
+                if expanded {
+                    expandedBlocks.insert(id)
+                } else {
+                    expandedBlocks.remove(id)
+                }
+            }
+        )
+    }
+
+    private func toggle(_ id: PanelConfigBlock) {
+        if expandedBlocks.contains(id) {
+            expandedBlocks.remove(id)
+        } else {
+            expandedBlocks.insert(id)
+        }
+    }
+}
+
+private enum PanelConfigBlock: Hashable {
+    case system, network, disk, power
 }

@@ -65,6 +65,45 @@ enum MixerRoutingSupport {
                                volumes: volumes)
     }
 
+    static func nextSelectedOutputDeviceUID(currentUID: String?,
+                                            selectedUIDs: [String],
+                                            availableUIDs: Set<String>) -> String? {
+        var seen = Set<String>()
+        let candidates = selectedUIDs.compactMap { rawUID -> String? in
+            guard let uid = sanitizedDeviceUID(rawUID),
+                  availableUIDs.contains(uid),
+                  seen.insert(uid).inserted else { return nil }
+            return uid
+        }
+        guard !candidates.isEmpty else { return nil }
+        guard let currentUID,
+              let index = candidates.firstIndex(of: currentUID) else {
+            return candidates[0]
+        }
+        guard candidates.count > 1 else { return nil }
+        return candidates[(index + 1) % candidates.count]
+    }
+
+    static func outputLooksLikeHeadphones(name: String,
+                                          uid: String,
+                                          dataSourceName: String?) -> Bool {
+        let haystack = [name, uid, dataSourceName ?? ""]
+            .joined(separator: " ")
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+            .lowercased()
+        let normalized = haystack.replacingOccurrences(of: #"[^a-z0-9]+"#,
+                                                       with: " ",
+                                                       options: .regularExpression)
+        let directTerms = [
+            "headphone", "headphones", "headset",
+            "earphone", "earphones", "earbud", "earbuds",
+            "airpod", "airpods", "earpod", "earpods",
+            "galaxy buds", "pixel buds", "beats", "bose qc",
+            "sony wh", "sony wf", "jabra", "soundcore"
+        ]
+        return directTerms.contains { normalized.contains($0) }
+    }
+
     static func requiresEngine(volume: Double,
                                selectedOutputDeviceUID: String?,
                                targetOutputDeviceUID: String?,

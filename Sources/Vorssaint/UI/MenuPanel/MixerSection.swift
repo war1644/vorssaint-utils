@@ -12,6 +12,12 @@ struct MixerSection: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var mixer = AppVolumeMixer.shared
     @ObservedObject private var inputManager = AudioInputDeviceManager.shared
+    @ObservedObject private var outputSwitcher = SoundOutputSwitcher.shared
+    @AppStorage(DefaultsKey.mixerLowerVolumeOnHeadphonesDisconnect)
+    private var lowerOnHeadphonesDisconnect = false
+    @AppStorage(DefaultsKey.soundOutputSwitcherEnabled)
+    private var soundOutputSwitcherEnabled = false
+    @State private var soundOutputSwitcherUIDs: [String] = []
     @State private var normalSliderTint = Color(nsColor: .controlAccentColor)
     @State private var accentRevision = 0
     var collapsible = true
@@ -20,6 +26,8 @@ struct MixerSection: View {
         PanelSection(.mixer, title: l10n.s.mixerSection, collapsible: collapsible) {
             VStack(alignment: .leading, spacing: 8) {
                 universalOutputPicker
+                headphoneDisconnectProtectionToggle
+                soundOutputSwitcherControls
                 microphonePicker
                 if AppVolumeMixer.isSupported, (!mixer.apps.isEmpty || mixer.needsPermission) {
                     Divider()
@@ -42,6 +50,9 @@ struct MixerSection: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("NSSystemColorsDidChangeNotification"))) { _ in
             refreshSliderTint()
+        }
+        .onAppear {
+            soundOutputSwitcherUIDs = SoundOutputSwitcher.shared.selectedDeviceUIDs()
         }
     }
 
@@ -103,6 +114,101 @@ struct MixerSection: View {
                 mixer.setUniversalOutputDeviceUID(selection)
             }
         )
+    }
+
+    private var headphoneDisconnectProtectionToggle: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Toggle(l10n.s.mixerLowerOnHeadphonesDisconnect,
+                   isOn: $lowerOnHeadphonesDisconnect)
+                .toggleStyle(.checkbox)
+                .font(.system(size: 11.5, weight: .medium))
+
+            Text(l10n.s.mixerLowerOnHeadphonesDisconnectCaption)
+                .font(.system(size: 9.5))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var soundOutputSwitcherControls: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Toggle(l10n.s.soundOutputSwitcherEnable, isOn: $soundOutputSwitcherEnabled)
+                .toggleStyle(.checkbox)
+                .font(.system(size: 11.5, weight: .medium))
+                .onChange(of: soundOutputSwitcherEnabled) { _, enabled in
+                    if enabled, soundOutputSwitcherUIDs.isEmpty,
+                       let current = mixer.currentOutputDeviceUID,
+                       universalOutputDevices.contains(where: { $0.uid == current }) {
+                        setSoundOutputSwitcherUIDs([current])
+                    }
+                    SoundOutputSwitcher.shared.syncWithPreferences()
+                }
+
+            Text(l10n.s.soundOutputSwitcherCaption)
+                .font(.system(size: 9.5))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if soundOutputSwitcherEnabled {
+                ShortcutPreferenceRow(role: .soundOutputSwitcher,
+                                      isEnabled: soundOutputSwitcherEnabled,
+                                      additionalConflict: WindowLayoutService.shared.shortcutConflictTitle) {
+                    SoundOutputSwitcher.shared.syncWithPreferences()
+                }
+                if outputSwitcher.registrationFailed {
+                    inputMessage(l10n.s.shortcutUnavailable, systemImage: "keyboard.badge.ellipsis")
+                }
+                if outputSwitcher.lastSwitchFailed {
+                    inputMessage(l10n.s.soundOutputSwitcherNoAvailableSelection,
+                                 systemImage: "speaker.badge.exclamationmark")
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(l10n.s.soundOutputSwitcherDevices)
+                        .font(.system(size: 10.5, weight: .medium))
+                        .foregroundStyle(.secondary)
+
+                    if universalOutputDevices.isEmpty {
+                        inputMessage(l10n.s.mixerSystemOutputNoDevices, systemImage: "speaker.slash")
+                    } else {
+                        ForEach(universalOutputDevices) { device in
+                            Toggle(isOn: soundOutputSwitcherSelectionBinding(for: device.uid)) {
+                                Text(outputDeviceTitle(device))
+                                    .font(.system(size: 10.5))
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
+                            .toggleStyle(.checkbox)
+                            .controlSize(.small)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func soundOutputSwitcherSelectionBinding(for uid: String) -> Binding<Bool> {
+        Binding(
+            get: { soundOutputSwitcherUIDs.contains(uid) },
+            set: { selected in
+                var next = soundOutputSwitcherUIDs
+                if selected {
+                    if !next.contains(uid) { next.append(uid) }
+                } else {
+                    next.removeAll { $0 == uid }
+                }
+                let visibleOrder = universalOutputDevices.map(\.uid)
+                let visible = visibleOrder.filter { next.contains($0) }
+                let unavailable = next.filter { !visibleOrder.contains($0) }
+                setSoundOutputSwitcherUIDs(visible + unavailable)
+            }
+        )
+    }
+
+    private func setSoundOutputSwitcherUIDs(_ uids: [String]) {
+        let sanitized = Defaults.sanitizedSoundOutputSwitcherDeviceUIDs(uids)
+        soundOutputSwitcherUIDs = sanitized
+        SoundOutputSwitcher.shared.setSelectedDeviceUIDs(sanitized)
     }
 
     private var microphonePicker: some View {

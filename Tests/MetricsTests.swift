@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Vorssaint
 
 import CoreGraphics
+import Darwin
 import Foundation
 
 // Standalone unit tests for pure helpers. Compiled without IOKit or UI by
@@ -215,10 +216,18 @@ struct MetricsTests {
         // MARK: Registered defaults
 
         let registeredDefaults = Defaults.registeredDefaults
+        expect(registeredDefaults[DefaultsKey.keepAwakeAutoStart] as? Bool == false,
+               "Keep Awake launch restore is opt-in")
         expect(registeredDefaults[DefaultsKey.hotkeyEnabled] as? Bool == true,
                "global hotkey is on for clean installs")
         expect(registeredDefaults[DefaultsKey.keepAwakeShortcut] as? String == "control+option+command:40",
                "keep awake shortcut defaults to Ctrl+Opt+Cmd+K")
+        expect(registeredDefaults[DefaultsKey.keepAwakeIconTint] as? String == KeepAwakeIconTint.orange.rawValue,
+               "keep-awake active icon tint defaults to orange")
+        expect(Defaults.sanitizedKeepAwakeIconTint("pink") == .pink,
+               "valid keep-awake active icon tint is preserved")
+        expect(Defaults.sanitizedKeepAwakeIconTint("bad") == .orange,
+               "invalid keep-awake active icon tint falls back to orange")
         expect(registeredDefaults[DefaultsKey.switcherEnabled] as? Bool == true,
                "window switcher is on for clean installs")
         expect(registeredDefaults[DefaultsKey.switcherShortcut] as? String == "command:48",
@@ -229,6 +238,13 @@ struct MetricsTests {
                "Dock Preview is opt-in for clean installs")
         expect(registeredDefaults[DefaultsKey.autoCheckUpdates] as? Bool == true,
                "update checks are on for clean installs")
+        expect(registeredDefaults[DefaultsKey.mixerLowerVolumeOnHeadphonesDisconnect] as? Bool == false,
+               "headphone disconnect volume lowering is opt-in")
+        expect(registeredDefaults[DefaultsKey.soundOutputSwitcherEnabled] as? Bool == false,
+               "sound output switcher is opt-in")
+        expect(registeredDefaults[DefaultsKey.soundOutputSwitcherShortcut] as? String
+               == GlobalShortcut.soundOutputSwitcherDefault.storageValue,
+               "sound output switcher shortcut has a registered default")
         expect(registeredDefaults[DefaultsKey.shelfShortcutEnabled] as? Bool == true,
                "shelf shortcut is on by default once shelf is enabled")
         expect(registeredDefaults[DefaultsKey.shelfShortcut] as? String == "control+option+command:2",
@@ -305,6 +321,8 @@ struct MetricsTests {
                "menu bar metric order keeps temperature sensors next to their components")
         expect(registeredDefaults[DefaultsKey.menuBarCombineTemperatures] as? Bool == true,
                "menu bar combines usage and temperature by default")
+        expect(registeredDefaults[DefaultsKey.menuBarSeparateMetrics] as? Bool == false,
+               "separate menu bar metric items are opt-in")
         expect(registeredDefaults[DefaultsKey.menuBarLabelStyle] as? String == "compact",
                "menu bar label style defaults to compact")
         expect(registeredDefaults[DefaultsKey.menuBarMemoryStyle] as? String == "percent",
@@ -548,6 +566,62 @@ struct MetricsTests {
         expect(MediaSupport.outputURL(for: mediaInput, suffix: "-compressed", fileExtension: "mp4").path
                == "/tmp/Clip-compressed.mp4",
                "Media output names keep clear suffixes")
+        let hiddenMediaInput = URL(fileURLWithPath: "/tmp/.Clip.mov")
+        expect(MediaSupport.outputURL(for: hiddenMediaInput, suffix: "", fileExtension: "gif").path
+               == "/tmp/Clip.gif",
+               "Media GIF output strips a leading dot from the source name")
+        let extensionOnlyMediaInput = URL(fileURLWithPath: "/tmp/.mov")
+        expect(MediaSupport.outputURL(for: extensionOnlyMediaInput, suffix: "", fileExtension: "gif").path
+               == "/tmp/mov.gif",
+               "Media GIF output stays visible for extension-looking source names")
+        let emptyBaseMediaInput = URL(fileURLWithPath: "/tmp/...")
+        expect(MediaSupport.outputURL(for: emptyBaseMediaInput, suffix: "", fileExtension: "gif").path
+               == "/tmp/Output.gif",
+               "Media GIF output falls back when the visible source name is empty")
+        let mediaVisibilityDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("vorssaint-media-visibility-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: mediaVisibilityDir,
+                                                 withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: mediaVisibilityDir) }
+        let visibleMediaOutput = mediaVisibilityDir.appendingPathComponent("Visible.gif")
+        FileManager.default.createFile(atPath: visibleMediaOutput.path,
+                                       contents: Data([0x47, 0x49, 0x46, 0x38]),
+                                       attributes: nil)
+        visibleMediaOutput.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return }
+            _ = chflags(path, UInt32(UF_HIDDEN))
+        }
+        var hiddenMediaOutputStat = stat()
+        visibleMediaOutput.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return }
+            _ = lstat(path, &hiddenMediaOutputStat)
+        }
+        expect((UInt32(hiddenMediaOutputStat.st_flags) & UInt32(UF_HIDDEN)) != 0,
+               "Media visibility test marks the fixture hidden")
+        MediaSupport.makeVisibleIfNeeded(visibleMediaOutput)
+        var visibleMediaOutputStat = stat()
+        visibleMediaOutput.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return }
+            _ = lstat(path, &visibleMediaOutputStat)
+        }
+        expect((UInt32(visibleMediaOutputStat.st_flags) & UInt32(UF_HIDDEN)) == 0,
+               "Media visible outputs clear the Finder hidden flag")
+        let intentionallyHiddenMediaOutput = mediaVisibilityDir.appendingPathComponent(".Manual.gif")
+        FileManager.default.createFile(atPath: intentionallyHiddenMediaOutput.path,
+                                       contents: Data([0x47, 0x49, 0x46, 0x38]),
+                                       attributes: nil)
+        intentionallyHiddenMediaOutput.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return }
+            _ = chflags(path, UInt32(UF_HIDDEN))
+        }
+        MediaSupport.makeVisibleIfNeeded(intentionallyHiddenMediaOutput)
+        var intentionallyHiddenMediaOutputStat = stat()
+        intentionallyHiddenMediaOutput.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return }
+            _ = lstat(path, &intentionallyHiddenMediaOutputStat)
+        }
+        expect((UInt32(intentionallyHiddenMediaOutputStat.st_flags) & UInt32(UF_HIDDEN)) != 0,
+               "Media output visibility respects dot-prefixed manual filenames")
         expect(MediaSupport.recognitionLanguages(for: "pt-BR") == ["pt-BR", "en-US"],
                "Media OCR language defaults include the app language and English")
         expectClose(Defaults.sanitizedAppVolume(1.5), 1.5, "valid app volume is preserved")
@@ -571,6 +645,14 @@ struct MetricsTests {
         ])
         expect(savedRoutes == ["com.apple.Safari": "BuiltInSpeakerDevice"],
                "app output device routes keep only valid app and device ids")
+        expect(Defaults.sanitizedSoundOutputSwitcherDeviceUIDs([
+            " BuiltInSpeakerDevice ",
+            "bad\nuid",
+            "BuiltInSpeakerDevice",
+            "ExternalDisplay",
+            7,
+        ]) == ["BuiltInSpeakerDevice", "ExternalDisplay"],
+               "sound output switcher keeps valid unique device ids in order")
         let savedMixerVolumes = ["com.apple.Safari": 0.35, "com.apple.Music": 1.4]
         let successfulUniversalOutput = MixerRoutingSupport.preferencesAfterUniversalOutputSwitch(
             outputDeviceUIDs: savedRoutes,
@@ -588,6 +670,51 @@ struct MetricsTests {
                "failed universal output keeps per-app routes")
         expect(failedUniversalOutput.volumes == savedMixerVolumes,
                "failed universal output keeps saved app volumes")
+        expect(MixerRoutingSupport.nextSelectedOutputDeviceUID(
+            currentUID: "BuiltInSpeakerDevice",
+            selectedUIDs: ["BuiltInSpeakerDevice", "ExternalDisplay"],
+            availableUIDs: ["BuiltInSpeakerDevice", "ExternalDisplay"]) == "ExternalDisplay",
+               "sound output switcher moves from the current selected output to the next")
+        expect(MixerRoutingSupport.nextSelectedOutputDeviceUID(
+            currentUID: "ExternalDisplay",
+            selectedUIDs: ["BuiltInSpeakerDevice", "ExternalDisplay"],
+            availableUIDs: ["BuiltInSpeakerDevice", "ExternalDisplay"]) == "BuiltInSpeakerDevice",
+               "sound output switcher wraps selected outputs")
+        expect(MixerRoutingSupport.nextSelectedOutputDeviceUID(
+            currentUID: "USBHeadphones",
+            selectedUIDs: ["BuiltInSpeakerDevice", "ExternalDisplay"],
+            availableUIDs: ["BuiltInSpeakerDevice", "ExternalDisplay"]) == "BuiltInSpeakerDevice",
+               "sound output switcher starts at the first selected output when current is outside the cycle")
+        expect(MixerRoutingSupport.nextSelectedOutputDeviceUID(
+            currentUID: "BuiltInSpeakerDevice",
+            selectedUIDs: ["BuiltInSpeakerDevice", "MissingDisplay", "ExternalDisplay"],
+            availableUIDs: ["BuiltInSpeakerDevice", "ExternalDisplay"]) == "ExternalDisplay",
+               "sound output switcher skips unavailable selected outputs")
+        expect(MixerRoutingSupport.nextSelectedOutputDeviceUID(
+            currentUID: "BuiltInSpeakerDevice",
+            selectedUIDs: ["BuiltInSpeakerDevice"],
+            availableUIDs: ["BuiltInSpeakerDevice"]) == nil,
+               "sound output switcher does nothing when the only selected output is already current")
+        expect(MixerRoutingSupport.outputLooksLikeHeadphones(name: "AirPods Pro",
+                                                             uid: "",
+                                                             dataSourceName: nil),
+               "AirPods are treated as headphones")
+        expect(MixerRoutingSupport.outputLooksLikeHeadphones(name: "Built-in Output",
+                                                             uid: "",
+                                                             dataSourceName: "Headphones"),
+               "wired headphone data source is treated as headphones")
+        expect(MixerRoutingSupport.outputLooksLikeHeadphones(name: "Sony WH-1000XM5",
+                                                             uid: "",
+                                                             dataSourceName: nil),
+               "common Bluetooth headphone names are treated as headphones")
+        expect(!MixerRoutingSupport.outputLooksLikeHeadphones(name: "MacBook Pro Speakers",
+                                                              uid: "BuiltInSpeakerDevice",
+                                                              dataSourceName: nil),
+               "built-in speakers are not treated as headphones")
+        expect(!MixerRoutingSupport.outputLooksLikeHeadphones(name: "JBL Flip",
+                                                              uid: "",
+                                                              dataSourceName: nil),
+               "Bluetooth speakers are not treated as headphones")
         expect(!MixerRoutingSupport.requiresEngine(volume: 1,
                                                    selectedOutputDeviceUID: nil,
                                                    targetOutputDeviceUID: "BuiltInSpeakerDevice",

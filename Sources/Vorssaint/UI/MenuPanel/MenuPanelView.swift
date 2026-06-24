@@ -9,12 +9,61 @@ extension Notification.Name {
     static let menuPanelWillShow = Notification.Name("VorssaintMenuPanelWillShow")
 }
 
+struct MenuPanelFocusRequest: Equatable {
+    let target: MenuPanelFocusTarget
+    let serial: Int
+}
+
+enum MenuPanelFocusTarget: Equatable {
+    case normal
+    case section(PanelSectionID)
+    case metric(MetricDetailKind)
+}
+
+final class MenuPanelFocus: ObservableObject {
+    static let shared = MenuPanelFocus()
+
+    @Published private(set) var request: MenuPanelFocusRequest?
+    @Published private(set) var activeMetric: MetricDetailKind?
+    @Published private(set) var isSwitchingMetricAnchor = false
+    private var serial = 0
+
+    private init() {}
+
+    func showNormalPanel() {
+        serial += 1
+        activeMetric = nil
+        request = MenuPanelFocusRequest(target: .normal, serial: serial)
+    }
+
+    func focus(_ section: PanelSectionID) {
+        serial += 1
+        activeMetric = nil
+        request = MenuPanelFocusRequest(target: .section(section), serial: serial)
+    }
+
+    func focus(_ metric: MetricDetailKind) {
+        serial += 1
+        activeMetric = metric
+        request = MenuPanelFocusRequest(target: .metric(metric), serial: serial)
+    }
+
+    func clearMetricFocus() {
+        activeMetric = nil
+    }
+
+    func setSwitchingMetricAnchor(_ switching: Bool) {
+        isSwitchingMetricAnchor = switching
+    }
+}
+
 /// Content of the menu bar popover: keep-awake controls, the volume mixer and
 /// the system monitor.
 struct MenuPanelView: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var awake = KeepAwakeManager.shared
     @ObservedObject private var updates = UpdateService.shared
+    @ObservedObject private var panelFocus = MenuPanelFocus.shared
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage(DefaultsKey.monitorShowMixer) private var showMixer = true
     @AppStorage(DefaultsKey.monitorShowSystem) private var showSystem = true
@@ -29,8 +78,10 @@ struct MenuPanelView: View {
     @AppStorage(DefaultsKey.panelSectionOrder) private var sectionOrderRaw = ""
     @State private var contentHeight: CGFloat = 0
     @State private var navigableContentHeight: CGFloat = 0
+    @State private var metricContentHeight: CGFloat = 0
     @State private var updateBannerHeight: CGFloat = 0
     @State private var selectedSection: PanelSectionID = .keepAwake
+    @State private var selectedMetric: MetricDetailKind?
 
     /// Cap the panel to the usable screen height so it never overflows the menu
     /// bar; taller content scrolls inside.
@@ -40,13 +91,16 @@ struct MenuPanelView: View {
 
     var body: some View {
         Group {
-            if panelNavigationEnabled {
+            if selectedMetric != nil {
+                metricPanel
+            } else if panelNavigationEnabled {
                 navigablePanel
             } else {
                 classicPanel
             }
         }
         .onAppear {
+            applyFocus(panelFocus.request)
             awake.refreshPasswordlessStatus()
             syncMonitorSampling()
         }
@@ -54,7 +108,9 @@ struct MenuPanelView: View {
             syncMonitorSampling()
         }
         .onDisappear {
-            SystemMonitor.shared.setMenuPanelNeeds(.none)
+            if !panelFocus.isSwitchingMetricAnchor {
+                SystemMonitor.shared.setMenuPanelNeeds(.none)
+            }
         }
         .onChange(of: monitorNeeds) { _, _ in
             syncMonitorSampling()
@@ -64,9 +120,15 @@ struct MenuPanelView: View {
                 updateBannerHeight = 0
             }
         }
+        .onChange(of: panelFocus.request) { _, request in
+            applyFocus(request)
+        }
     }
 
     private var monitorNeeds: SystemMonitorPanelNeeds {
+        if let selectedMetric {
+            return selectedMetric.monitorNeeds
+        }
         if panelNavigationEnabled {
             switch activeSection {
             case .system: return SystemMonitorPanelNeeds(system: true)
@@ -86,14 +148,29 @@ struct MenuPanelView: View {
         SystemMonitor.shared.setMenuPanelNeeds(monitorNeeds)
     }
 
+    private func applyFocus(_ request: MenuPanelFocusRequest?) {
+        guard let request else { return }
+        switch request.target {
+        case .normal:
+            selectedMetric = nil
+        case .section(let section):
+            guard isSectionVisible(section) else { return }
+            selectedMetric = nil
+            selectedSection = section
+        case .metric(let metric):
+            selectedMetric = metric
+            selectedSection = metric.panelSection
+        }
+    }
+
     private var classicPanel: some View {
         // Hosted in a custom overlay-scroller container. SwiftUI's own ScrollView
         // reserves a legacy scroller gutter on the right when the system is set to
         // always show scroll bars, pushing the fixed-width content off-center. An
         // overlay scroller floats over the content and reserves no space, so the
         // panel stays centered whether or not it needs to scroll. The hosting
-        // view reports its natural height after layout so section collapse and
-        // expand animations resize the popover as they happen.
+        // view reports its natural height after layout so section changes resize
+        // the popover without reserving a scroller gutter.
         OverlayScrollView(measuredHeight: $contentHeight) {
             VStack(alignment: .leading, spacing: 12) {
                 UpdateBanner()
@@ -132,6 +209,28 @@ struct MenuPanelView: View {
         .panelGlassSurface()
     }
 
+    private var metricPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            UpdateBanner()
+                .reportHeight($updateBannerHeight)
+            header
+
+            if let selectedMetric {
+                metricNavigationHeader(selectedMetric)
+                OverlayScrollView(measuredHeight: $metricContentHeight) {
+                    MetricDetailView(kind: selectedMetric)
+                        .frame(width: 308)
+                }
+                .frame(width: 308, height: metricScrollHeight)
+            }
+
+            footer
+        }
+        .padding(12)
+        .frame(width: 332, height: metricPanelHeight)
+        .panelGlassSurface()
+    }
+
     /// The major sections in the user's saved order. Reading `sectionOrderRaw`
     /// (the @AppStorage backing) establishes the dependency so reordering in
     /// Settings refreshes the live panel; PanelLayout fills in any sections the
@@ -158,6 +257,15 @@ struct MenuPanelView: View {
         min(maxHeight, max(220, navigableScrollHeight + navigableChromeHeight))
     }
 
+    private var metricScrollHeight: CGFloat {
+        let measured = metricContentHeight == 0 ? estimatedMetricContentHeight : metricContentHeight
+        return min(measured, max(80, maxHeight - navigableChromeHeight))
+    }
+
+    private var metricPanelHeight: CGFloat {
+        min(maxHeight, max(220, metricScrollHeight + navigableChromeHeight))
+    }
+
     private var navigableChromeHeight: CGFloat {
         let bannerHeight = updates.state.showsMenuPanelBanner
             ? (max(updateBannerHeight, 48) + 12)
@@ -176,6 +284,15 @@ struct MenuPanelView: View {
         case .fanControl: return 92
         case .utilities: return 500
         case .controls: return 360
+        }
+    }
+
+    private var estimatedMetricContentHeight: CGFloat {
+        guard let selectedMetric else { return 320 }
+        switch selectedMetric {
+        case .cpu, .gpu, .memory: return 430
+        case .network: return 330
+        case .battery, .power: return 360
         }
     }
 
@@ -215,9 +332,7 @@ struct MenuPanelView: View {
         HStack(spacing: 2) {
             ForEach(visibleSections) { id in
                 Button {
-                    withAnimation(.easeInOut(duration: 0.16)) {
-                        selectedSection = id
-                    }
+                    selectedSection = id
                 } label: {
                     Image(systemName: id.symbolName)
                         .font(.system(size: 13, weight: .semibold))
@@ -243,6 +358,36 @@ struct MenuPanelView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .strokeBorder(PanelSurface.border(for: colorScheme), lineWidth: 0.7)
         )
+    }
+
+    private func metricNavigationHeader(_ kind: MetricDetailKind) -> some View {
+        HStack(spacing: 8) {
+            Button {
+                selectedMetric = nil
+                selectedSection = kind.panelSection
+                MenuPanelFocus.shared.clearMetricFocus()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 11, weight: .semibold))
+                    .frame(width: 24, height: 24)
+                    .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .background(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(PanelSurface.cardFill(for: colorScheme))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .strokeBorder(PanelSurface.border(for: colorScheme), lineWidth: 0.7)
+            )
+
+            Label(kind.title(l10n.s), systemImage: kind.symbolName)
+                .font(.system(size: 12.5, weight: .semibold))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     /// Starts cleaning mode and closes the panel so the lock overlay is the only
@@ -304,9 +449,9 @@ struct MenuPanelView: View {
             footerButton(panelModeTitle,
                          systemImage: panelModeSymbol,
                          horizontalPadding: 7) {
-                withAnimation(.easeInOut(duration: 0.16)) {
-                    panelNavigationEnabled.toggle()
-                }
+                selectedMetric = nil
+                MenuPanelFocus.shared.clearMetricFocus()
+                panelNavigationEnabled.toggle()
             }
 
             footerButton(l10n.s.panelQuit,
@@ -1377,6 +1522,9 @@ struct KeepAwakeCard: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var awake = KeepAwakeManager.shared
     @AppStorage(DefaultsKey.defaultDuration) private var defaultDuration: Int = 0
+    @AppStorage(DefaultsKey.keepAwakeAutoStart) private var keepAwakeAutoStart = false
+    @AppStorage(DefaultsKey.keepAwakeIconTint) private var keepAwakeIconTint = KeepAwakeIconTint.orange.rawValue
+    @State private var optionsExpanded = false
     var collapsible = true
 
     var body: some View {
@@ -1411,6 +1559,8 @@ struct KeepAwakeCard: View {
                     }
                 }
 
+                optionsDisclosure
+
                 Divider()
 
                 optionRow(title: l10n.s.clamshellTitle,
@@ -1423,6 +1573,78 @@ struct KeepAwakeCard: View {
         }
         .onAppear {
             defaultDuration = Defaults.sanitizedDefaultDuration(defaultDuration)
+            keepAwakeIconTint = Defaults.sanitizedKeepAwakeIconTint(keepAwakeIconTint).rawValue
+        }
+    }
+
+    private var optionsDisclosure: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                optionsExpanded.toggle()
+            } label: {
+                HStack(spacing: 7) {
+                    Image(systemName: optionsExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 12)
+                    Text(l10n.s.keepAwakeOptions)
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if optionsExpanded {
+                VStack(alignment: .leading, spacing: 8) {
+                    iconTintRow
+                    optionRow(title: l10n.s.keepAwakeAutoStart,
+                              caption: l10n.s.keepAwakeAutoStartCaption,
+                              isOn: $keepAwakeAutoStart,
+                              disabled: false)
+                }
+                .padding(.leading, 19)
+            }
+        }
+    }
+
+    private var iconTintRow: some View {
+        let tint = Defaults.sanitizedKeepAwakeIconTint(keepAwakeIconTint)
+        return HStack(spacing: 8) {
+            if let color = iconTintColor(tint) {
+                Circle()
+                    .fill(color)
+                    .frame(width: 10, height: 10)
+            } else {
+                Circle()
+                    .strokeBorder(Color.secondary.opacity(0.8), lineWidth: 1.2)
+                    .frame(width: 10, height: 10)
+            }
+            Text(l10n.s.keepAwakeIconTintLabel)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+            Picker("", selection: $keepAwakeIconTint) {
+                ForEach(KeepAwakeIconTint.allCases) { option in
+                    Text(option.title(l10n.s)).tag(option.rawValue)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .controlSize(.small)
+            .frame(maxWidth: 138)
+        }
+    }
+
+    private func iconTintColor(_ tint: KeepAwakeIconTint) -> Color? {
+        switch tint {
+        case .orange: return .orange
+        case .green: return .green
+        case .blue: return .blue
+        case .purple: return .purple
+        case .pink: return .pink
+        case .none: return nil
         }
     }
 

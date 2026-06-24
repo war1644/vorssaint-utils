@@ -12,10 +12,13 @@ enum DefaultsKey {
     static let featuresOnboardingVersion = "featuresOnboardingVersion" // last feature-tour marker handled
     static let lastUpdateIntroVersion = "lastUpdateIntroVersion"
     static let dockPreviewIntroVersion = "dockPreviewIntroVersion"
+    static let supportUpdateIntroVersion = "supportUpdateIntroVersion"
     static let defaultDuration = "defaultDurationMinutes" // 0 = indefinite
     static let batteryLimit = "batteryLimitPercent"       // 0 = never
+    static let keepAwakeAutoStart = "keepAwakeAutoStart"  // start Keep Awake when the app launches
     static let hotkeyEnabled = "hotkeyEnabled"
     static let keepAwakeShortcut = "keepAwakeShortcut"    // GlobalShortcut storage value
+    static let keepAwakeIconTint = "keepAwakeIconTint"    // KeepAwakeIconTint.rawValue
     static let showCountdown = "showCountdownInMenuBar"
     static let hasOnboarded = "hasOnboarded"
     static let sleepDisabledFlag = "vorssDisabledSleep"   // internal guard for pmset disablesleep
@@ -30,6 +33,10 @@ enum DefaultsKey {
     static let releaseNotesOnUpdate = "releaseNotesOnUpdate" // show What's New after an update
     static let appVolumes = "appVolumes"                  // [bundle id: 0...2]
     static let appOutputDevices = "appOutputDevices"      // [bundle id: audio device UID]
+    static let mixerLowerVolumeOnHeadphonesDisconnect = "mixerLowerVolumeOnHeadphonesDisconnect"
+    static let soundOutputSwitcherEnabled = "soundOutputSwitcherEnabled"
+    static let soundOutputSwitcherShortcut = "soundOutputSwitcherShortcut"
+    static let soundOutputSwitcherDeviceUIDs = "soundOutputSwitcherDeviceUIDs"
     static let preferredInputDevice = "preferredInputDevice" // audio input device UID
     static let finderCutPasteEnabled = "finderCutPasteEnabled"
     static let autoQuitEnabled = "autoQuitEnabled"
@@ -73,6 +80,7 @@ enum DefaultsKey {
     static let menuBarPreset = "menuBarPreset"           // dense
     static let menuBarMetricOrder = "menuBarMetricOrder" // comma-separated MenuBarMetric raw values
     static let menuBarCombineTemperatures = "menuBarCombineTemperatures" // usage/charge + temperature in one block when possible
+    static let menuBarSeparateMetrics = "menuBarSeparateMetrics" // one status item per active metric
     static let menuBarLabelStyle = "menuBarLabelStyle"     // compact | classic
     static let menuBarMemoryStyle = "menuBarMemoryStyle"   // dot | percent | both
     static let monitorInterval = "monitorIntervalSeconds"  // sampling cadence: 1/2/5
@@ -197,6 +205,33 @@ enum DockPreviewIntroInfo {
     static let releaseVersion = "3.0.4"
 }
 
+enum SupportUpdateIntroInfo {
+    static let releaseVersion = "3.1.2"
+}
+
+enum KeepAwakeIconTint: String, CaseIterable, Identifiable {
+    case orange, green, blue, purple, pink, none
+
+    var id: String { rawValue }
+
+    static var current: KeepAwakeIconTint {
+        Defaults.sanitizedKeepAwakeIconTint(
+            UserDefaults.standard.string(forKey: DefaultsKey.keepAwakeIconTint)
+        )
+    }
+
+    func title(_ strings: Strings) -> String {
+        switch self {
+        case .orange: return strings.keepAwakeIconTintOrange
+        case .green: return strings.keepAwakeIconTintGreen
+        case .blue: return strings.keepAwakeIconTintBlue
+        case .purple: return strings.keepAwakeIconTintPurple
+        case .pink: return strings.keepAwakeIconTintPink
+        case .none: return strings.keepAwakeIconTintNone
+        }
+    }
+}
+
 /// Thumbnail size for the app switcher and Dock preview, scaled from one user
 /// preference so both grow together. Captures scale by the same factor, so
 /// larger previews stay sharp.
@@ -239,8 +274,10 @@ enum Defaults {
         DefaultsKey.clamshellPreferred: false,
         DefaultsKey.defaultDuration: 0,
         DefaultsKey.batteryLimit: 10,
+        DefaultsKey.keepAwakeAutoStart: false,
         DefaultsKey.hotkeyEnabled: true,
         DefaultsKey.keepAwakeShortcut: "control+option+command:40",
+        DefaultsKey.keepAwakeIconTint: KeepAwakeIconTint.orange.rawValue,
         DefaultsKey.showCountdown: false,
         DefaultsKey.scrollInverterEnabled: false,
         DefaultsKey.switcherEnabled: true,
@@ -251,6 +288,9 @@ enum Defaults {
         DefaultsKey.previewSize: "normal",
         DefaultsKey.autoCheckUpdates: true,
         DefaultsKey.releaseNotesOnUpdate: true,
+        DefaultsKey.mixerLowerVolumeOnHeadphonesDisconnect: false,
+        DefaultsKey.soundOutputSwitcherEnabled: false,
+        DefaultsKey.soundOutputSwitcherShortcut: GlobalShortcut.soundOutputSwitcherDefault.storageValue,
         // Finder never benefits from being "quit" (it just relaunches), so
         // it's excepted out of the box.
         DefaultsKey.autoQuitExceptions: mandatoryAutoQuitExceptionBundleIDs,
@@ -288,6 +328,7 @@ enum Defaults {
         DefaultsKey.menuBarPreset: "dense",
         DefaultsKey.menuBarMetricOrder: defaultMenuBarMetricOrder.joined(separator: ","),
         DefaultsKey.menuBarCombineTemperatures: true,
+        DefaultsKey.menuBarSeparateMetrics: false,
         DefaultsKey.menuBarLabelStyle: "compact",
         DefaultsKey.menuBarMemoryStyle: "percent",
         DefaultsKey.monitorShowSystem: true,
@@ -385,6 +426,14 @@ enum Defaults {
 
     static func sanitizedBatteryLimit(_ percent: Int) -> Int {
         allowedBatteryLimits.contains(percent) ? percent : 10
+    }
+
+    static func sanitizedKeepAwakeIconTint(_ rawValue: String?) -> KeepAwakeIconTint {
+        guard let rawValue,
+              let tint = KeepAwakeIconTint(rawValue: rawValue) else {
+            return .orange
+        }
+        return tint
     }
 
     static func sanitizedMonitorInterval(_ seconds: Int) -> Int {
@@ -500,6 +549,17 @@ enum Defaults {
 
     static func sanitizedAppOutputDevices(_ raw: [String: Any]) -> [String: String] {
         MixerRoutingSupport.sanitizedRouteMap(raw)
+    }
+
+    static func sanitizedSoundOutputSwitcherDeviceUIDs(_ raw: [Any]) -> [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for value in raw {
+            guard let uid = MixerRoutingSupport.sanitizedDeviceUID(value),
+                  seen.insert(uid).inserted else { continue }
+            result.append(uid)
+        }
+        return result
     }
 
     static func sanitizedPreferredInputDeviceUID(_ value: Any?) -> String? {

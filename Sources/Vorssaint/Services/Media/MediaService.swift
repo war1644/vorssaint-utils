@@ -234,6 +234,7 @@ final class MediaService: ObservableObject {
             logLock.unlock()
             throw MediaFailureBox(.failed(message.isEmpty ? "avconvert failed." : message))
         }
+        MediaSupport.makeVisibleIfNeeded(outputURL)
         publish(.running(progress: 1, message: "video"), operationID: operationID)
         let result = MediaResult(tool: .videoCompressor,
                                  inputURL: inputURL,
@@ -291,6 +292,7 @@ final class MediaService: ObservableObject {
         }
 
         guard CGImageDestinationFinalize(destination) else { throw MediaFailureBox(.unsupported) }
+        MediaSupport.makeVisibleIfNeeded(outputURL)
         let result = MediaResult(tool: .gifMaker,
                                  inputURL: inputURL,
                                  outputURL: outputURL,
@@ -332,6 +334,7 @@ final class MediaService: ObservableObject {
         }
         CGImageDestinationAddImage(destination, image, outputProperties as CFDictionary)
         guard CGImageDestinationFinalize(destination) else { throw MediaFailureBox(.unsupported) }
+        MediaSupport.makeVisibleIfNeeded(outputURL)
         let result = MediaResult(tool: .imageCompressor,
                                  inputURL: inputURL,
                                  outputURL: outputURL,
@@ -370,6 +373,7 @@ final class MediaService: ObservableObject {
         if let outputURL {
             try prepareTextOutput(inputURL: inputURL, outputURL: outputURL)
             try text.write(to: outputURL, atomically: true, encoding: .utf8)
+            MediaSupport.makeVisibleIfNeeded(outputURL)
         }
         let result = MediaResult(tool: .textExtractor,
                                  inputURL: inputURL,

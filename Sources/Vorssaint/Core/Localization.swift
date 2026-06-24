@@ -128,6 +128,14 @@ struct Strings {
     let keepAwakeEndsIn: String        // + remaining
     let keepAwakeUntilDisabled: String
     let keepAwakeNormalRules: String
+    let keepAwakeOptions: String
+    let keepAwakeIconTintLabel: String
+    let keepAwakeIconTintOrange: String
+    let keepAwakeIconTintGreen: String
+    let keepAwakeIconTintBlue: String
+    let keepAwakeIconTintPurple: String
+    let keepAwakeIconTintPink: String
+    let keepAwakeIconTintNone: String
     let durationLabel: String
     let clamshellTitle: String
     let clamshellOnCaption: String
@@ -205,6 +213,8 @@ struct Strings {
     // MARK: Settings — energy
     let sessionSection: String
     let defaultDurationLabel: String
+    let keepAwakeAutoStart: String
+    let keepAwakeAutoStartCaption: String
     let batteryProtectionSection: String
     let batteryDisableBelow: String
     let batteryNever: String
@@ -486,6 +496,13 @@ struct Strings {
     let mixerSystemOutputNoDevices: String
     let mixerSystemOutputTooltip: String
     let mixerSystemOutputErrorFormat: String
+    let mixerLowerOnHeadphonesDisconnect: String
+    let mixerLowerOnHeadphonesDisconnectCaption: String
+    let soundOutputSwitcherTitle: String
+    let soundOutputSwitcherEnable: String
+    let soundOutputSwitcherCaption: String
+    let soundOutputSwitcherDevices: String
+    let soundOutputSwitcherNoAvailableSelection: String
     let mixerInputTitle: String
     let mixerInputNoDevices: String
     let mixerInputUnavailable: String
@@ -566,6 +583,8 @@ struct Strings {
     let monitorMenuBarCaption: String
     let monitorCombineTemperatures: String
     let monitorCombineTemperaturesCaption: String
+    let monitorSeparateMenuBarMetrics: String
+    let monitorSeparateMenuBarMetricsCaption: String
     let monitorShowCPU: String
     let monitorShowMemory: String
     let monitorShowNetwork: String
@@ -715,6 +734,11 @@ struct Strings {
     let donateMessage: String
     let donateButton: String
     let donateThanks: String
+    let supportIntroTitle: String
+    let supportIntroMessage: String
+    let supportIntroStarButton: String
+    let supportIntroCoffeeButton: String
+    let supportIntroLaterButton: String
     let showMenuBarIcon: String
     let showMenuBarIconCaption: String
 
@@ -775,6 +799,14 @@ extension Strings {
         keepAwakeEndsIn: "Termina em",
         keepAwakeUntilDisabled: "Ativo até você desativar",
         keepAwakeNormalRules: "O Mac segue as regras normais de energia",
+        keepAwakeOptions: "Opções",
+        keepAwakeIconTintLabel: "Cor do ícone ativo",
+        keepAwakeIconTintOrange: "Laranja",
+        keepAwakeIconTintGreen: "Verde",
+        keepAwakeIconTintBlue: "Azul",
+        keepAwakeIconTintPurple: "Roxo",
+        keepAwakeIconTintPink: "Rosa",
+        keepAwakeIconTintNone: "Sem cor",
         durationLabel: "Duração",
         clamshellTitle: "Continuar com a tampa fechada",
         clamshellOnCaption: "Suspensão totalmente desativada. Atenção à energia",
@@ -843,6 +875,8 @@ extension Strings {
 
         sessionSection: "Sessão",
         defaultDurationLabel: "Duração padrão",
+        keepAwakeAutoStart: "Ativar ao abrir o app",
+        keepAwakeAutoStartCaption: "Inicia “Manter acordado” automaticamente quando o Vorssaint abrir.",
         batteryProtectionSection: "Proteção de bateria",
         batteryDisableBelow: "Desativar com bateria abaixo de",
         batteryNever: "Nunca",
@@ -1113,6 +1147,13 @@ extension Strings {
         mixerSystemOutputNoDevices: "Nenhuma saída encontrada",
         mixerSystemOutputTooltip: "Escolher saída do sistema",
         mixerSystemOutputErrorFormat: "Não foi possível trocar: %@",
+        mixerLowerOnHeadphonesDisconnect: "Baixar volume ao desconectar fones",
+        mixerLowerOnHeadphonesDisconnectCaption: "Reduz a saída para 0% quando fones com fio ou Bluetooth desconectam.",
+        soundOutputSwitcherTitle: "Alternador de saída",
+        soundOutputSwitcherEnable: "Alternar saídas por atalho",
+        soundOutputSwitcherCaption: "Escolha as saídas e use o atalho para passar para a próxima disponível.",
+        soundOutputSwitcherDevices: "Saídas no ciclo",
+        soundOutputSwitcherNoAvailableSelection: "Selecione pelo menos uma saída disponível.",
         mixerInputTitle: "Microfone",
         mixerInputNoDevices: "Nenhum microfone encontrado",
         mixerInputUnavailable: "Microfone indisponível",
@@ -1188,6 +1229,8 @@ extension Strings {
         monitorMenuBarCaption: "Escolha o que aparece ao lado do ícone na barra de menus.",
         monitorCombineTemperatures: "Combinar uso e temperatura",
         monitorCombineTemperaturesCaption: "Quando uso e temperatura do mesmo item estiverem ativos, mostra tudo em um bloco só.",
+        monitorSeparateMenuBarMetrics: "Separar métricas em itens próprios",
+        monitorSeparateMenuBarMetricsCaption: "Separa os blocos ativos na barra de menus e mantém uso e temperatura juntos quando combinar estiver ativo.",
         monitorShowCPU: "CPU",
         monitorShowMemory: "Memória",
         monitorShowNetwork: "Rede",
@@ -1329,6 +1372,11 @@ extension Strings {
         donateMessage: "Todos os meus projetos públicos são, e sempre serão, totalmente gratuitos: sem assinatura, sem anúncios. O apoio da comunidade é a única forma de manter tudo vivo. Se o Vorssaint te ajuda, um café faz diferença de verdade.",
         donateButton: "Buy me a coffee",
         donateThanks: "Obrigado por estar aqui. 🖤",
+        supportIntroTitle: "O Vorssaint é 100% gratuito e sempre será",
+        supportIntroMessage: "Eu sigo cuidando do app no meu tempo livre. Se ele te ajuda, você pode me ajudar de um jeito simples, divulgando, deixando uma estrela no GitHub ou pagando um café. Isso me ajuda muito a continuar trazendo melhorias.",
+        supportIntroStarButton: "Dar uma estrela",
+        supportIntroCoffeeButton: "Buy me a coffee",
+        supportIntroLaterButton: "Agora não",
         showMenuBarIcon: "Mostrar ícone na barra de menus",
         showMenuBarIconCaption: "Se o ícone do Vorssaint sumir (o macOS pode esconder ícones quando a barra de menus fica sem espaço, comum em Macs com notch), reabra o Vorssaint pela pasta Aplicativos ou pelo Spotlight: isso recria o ícone e, se ele ainda estiver escondido, abre esta janela. O botão acima faz o mesmo quando você já consegue chegar aqui. Manter menos ícones na barra, ou menos métricas no Vorssaint, reduz bastante a chance.",
         shortcutRecording: "Pressione o novo atalho",
@@ -1388,6 +1436,14 @@ extension Strings {
         keepAwakeEndsIn: "Ends in",
         keepAwakeUntilDisabled: "Active until you turn it off",
         keepAwakeNormalRules: "The Mac follows its normal energy rules",
+        keepAwakeOptions: "Options",
+        keepAwakeIconTintLabel: "Active icon color",
+        keepAwakeIconTintOrange: "Orange",
+        keepAwakeIconTintGreen: "Green",
+        keepAwakeIconTintBlue: "Blue",
+        keepAwakeIconTintPurple: "Purple",
+        keepAwakeIconTintPink: "Pink",
+        keepAwakeIconTintNone: "No color",
         durationLabel: "Duration",
         clamshellTitle: "Keep going with the lid closed",
         clamshellOnCaption: "Sleep fully disabled. Mind the power",
@@ -1456,6 +1512,8 @@ extension Strings {
 
         sessionSection: "Session",
         defaultDurationLabel: "Default duration",
+        keepAwakeAutoStart: "Turn on when the app opens",
+        keepAwakeAutoStartCaption: "Starts “Keep awake” automatically when Vorssaint opens.",
         batteryProtectionSection: "Battery protection",
         batteryDisableBelow: "Disable when battery drops below",
         batteryNever: "Never",
@@ -1726,6 +1784,13 @@ extension Strings {
         mixerSystemOutputNoDevices: "No outputs found",
         mixerSystemOutputTooltip: "Choose system output",
         mixerSystemOutputErrorFormat: "Could not switch: %@",
+        mixerLowerOnHeadphonesDisconnect: "Lower volume when headphones disconnect",
+        mixerLowerOnHeadphonesDisconnectCaption: "Sets output to 0% when wired or Bluetooth headphones disconnect.",
+        soundOutputSwitcherTitle: "Output switcher",
+        soundOutputSwitcherEnable: "Switch outputs with shortcut",
+        soundOutputSwitcherCaption: "Choose outputs and use the shortcut to move to the next available one.",
+        soundOutputSwitcherDevices: "Outputs in cycle",
+        soundOutputSwitcherNoAvailableSelection: "Select at least one available output.",
         mixerInputTitle: "Microphone",
         mixerInputNoDevices: "No microphones found",
         mixerInputUnavailable: "Microphone unavailable",
@@ -1801,6 +1866,8 @@ extension Strings {
         monitorMenuBarCaption: "Choose what appears next to the icon in the menu bar.",
         monitorCombineTemperatures: "Combine usage and temperature",
         monitorCombineTemperaturesCaption: "When usage and temperature for the same item are enabled, show them in one block.",
+        monitorSeparateMenuBarMetrics: "Separate metrics into their own items",
+        monitorSeparateMenuBarMetricsCaption: "Separates active blocks in the menu bar and keeps usage and temperature together when combine is on.",
         monitorShowCPU: "CPU",
         monitorShowMemory: "Memory",
         monitorShowNetwork: "Network",
@@ -1942,6 +2009,11 @@ extension Strings {
         donateMessage: "Every one of my public projects is, and always will be, completely free: no subscription, no ads. Community support is the only thing that keeps it alive. If Vorssaint helps you, a coffee genuinely makes a difference.",
         donateButton: "Buy me a coffee",
         donateThanks: "Thank you for being here. 🖤",
+        supportIntroTitle: "Vorssaint is 100% free and always will be",
+        supportIntroMessage: "I keep taking care of the app in my free time. If it helps you, you can help me in a simple way by sharing it, leaving a star on GitHub or buying me a coffee. It helps me a lot to keep improving it.",
+        supportIntroStarButton: "Leave a star",
+        supportIntroCoffeeButton: "Buy me a coffee",
+        supportIntroLaterButton: "Not now",
         showMenuBarIcon: "Show menu bar icon",
         showMenuBarIconCaption: "If Vorssaint's icon disappears (macOS can hide menu bar icons when the bar runs out of room, common on Macs with a notch), reopen Vorssaint from Applications or Spotlight: that rebuilds the icon and, if it's still hidden, opens this window. The button above does the same when you can already get here. Keeping fewer menu bar icons, or fewer Vorssaint metrics, makes it far less likely.",
         shortcutRecording: "Press the new shortcut",

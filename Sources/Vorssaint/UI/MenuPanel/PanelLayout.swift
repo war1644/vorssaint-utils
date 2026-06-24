@@ -259,9 +259,7 @@ struct PanelSection<Content: View>: View {
 
     private func resetButton(_ action: @escaping () -> Void) -> some View {
         Button {
-            withAnimation(.easeOut(duration: 0.16)) {
-                action()
-            }
+            action()
         } label: {
             Image(systemName: "arrow.counterclockwise")
                 .font(.system(size: 10.5, weight: .semibold))
@@ -280,17 +278,15 @@ struct PanelSection<Content: View>: View {
     private var isEditing: Bool { supportsEditing && editButtonVisible && editing }
 
     private func toggleEditing() {
-        withAnimation(.easeOut(duration: 0.16)) {
-            if collapsed {
-                collapsed = false
-                PanelLayout.setCollapsed(false, for: id)
-            }
-            editing.toggle()
+        if collapsed {
+            collapsed = false
+            PanelLayout.setCollapsed(false, for: id)
         }
+        editing.toggle()
     }
 
     private func toggle() {
-        withAnimation(.easeOut(duration: 0.18)) { collapsed.toggle() }
+        collapsed.toggle()
         PanelLayout.setCollapsed(collapsed, for: id)
     }
 }
@@ -338,9 +334,7 @@ private struct PanelItemDropDelegate<Item: PanelOrderItem>: DropDelegate {
         guard let dragging, dragging != item,
               let from = order.firstIndex(of: dragging),
               let to = order.firstIndex(of: item) else { return }
-        withAnimation(.easeInOut(duration: 0.16)) {
-            order.move(fromOffsets: IndexSet(integer: from), toOffset: to > from ? to + 1 : to)
-        }
+        order.move(fromOffsets: IndexSet(integer: from), toOffset: to > from ? to + 1 : to)
     }
 
     func performDrop(info: DropInfo) -> Bool {
@@ -359,9 +353,7 @@ struct PanelInlineHideButton: View {
 
     var body: some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.14)) {
-                isVisible.toggle()
-            }
+            isVisible.toggle()
         } label: {
             Image(systemName: isVisible ? "eye.slash.fill" : "eye.fill")
                 .font(.system(size: 11, weight: .bold))

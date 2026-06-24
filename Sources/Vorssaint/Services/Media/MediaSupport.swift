@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Vorssaint
 
 import CoreGraphics
+import Darwin
 import Foundation
 
 enum MediaTool: String, CaseIterable, Identifiable {
@@ -92,10 +93,17 @@ enum MediaSupport {
 
     static func outputURL(for inputURL: URL, suffix: String, fileExtension: String) -> URL {
         let directory = inputURL.deletingLastPathComponent()
-        let base = inputURL.deletingPathExtension().lastPathComponent
+        let base = visibleOutputBaseName(for: inputURL)
         return directory
             .appendingPathComponent("\(base)\(suffix)")
             .appendingPathExtension(fileExtension)
+    }
+
+    static func visibleOutputBaseName(for inputURL: URL) -> String {
+        let raw = inputURL.deletingPathExtension().lastPathComponent
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let visible = trimmed.drop { $0 == "." }
+        return visible.isEmpty ? "Output" : String(visible)
     }
 
     static func uniqueOutputURL(for inputURL: URL, suffix: String, fileExtension: String,
@@ -112,6 +120,24 @@ enum MediaSupport {
         return candidate
     }
 
+    static func makeVisibleIfNeeded(_ outputURL: URL, fileManager: FileManager = .default) {
+        guard shouldForceVisibleOutput(outputURL),
+              fileManager.fileExists(atPath: outputURL.path) else { return }
+        try? (outputURL as NSURL).setResourceValue(false, forKey: .isHiddenKey)
+        var info = stat()
+        guard outputURL.withUnsafeFileSystemRepresentation({ path in
+            guard let path else { return false }
+            return lstat(path, &info) == 0
+        }) else { return }
+        let flags = UInt32(info.st_flags)
+        let visibleFlags = flags & ~UInt32(UF_HIDDEN)
+        guard visibleFlags != flags else { return }
+        outputURL.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return }
+            _ = chflags(path, visibleFlags)
+        }
+    }
+
     static func recognitionLanguages(for languageRawValue: String) -> [String] {
         switch languageRawValue {
         case "pt-BR": return ["pt-BR", "en-US"]
@@ -123,6 +149,11 @@ enum MediaSupport {
         case "zh-Hans": return ["zh-Hans", "en-US"]
         default: return ["en-US"]
         }
+    }
+
+    private static func shouldForceVisibleOutput(_ outputURL: URL) -> Bool {
+        let name = outputURL.lastPathComponent.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !name.isEmpty && !name.hasPrefix(".")
     }
 
     private static func even(_ value: Int) -> Int {

@@ -257,6 +257,8 @@ struct EnergySettings: View {
     @ObservedObject private var awake = KeepAwakeManager.shared
     @AppStorage(DefaultsKey.defaultDuration) private var defaultDuration = 0
     @AppStorage(DefaultsKey.batteryLimit) private var batteryLimit = 10
+    @AppStorage(DefaultsKey.keepAwakeAutoStart) private var keepAwakeAutoStart = false
+    @AppStorage(DefaultsKey.keepAwakeIconTint) private var keepAwakeIconTint = KeepAwakeIconTint.orange.rawValue
 
     var body: some View {
         Form {
@@ -270,6 +272,10 @@ struct EnergySettings: View {
                     Text(l10n.s.hours8).tag(480)
                     Text(l10n.s.indefinite).tag(0)
                 }
+                Toggle(l10n.s.keepAwakeAutoStart, isOn: $keepAwakeAutoStart)
+                Text(l10n.s.keepAwakeAutoStartCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             Section(l10n.s.batteryProtectionSection) {
                 Picker(l10n.s.batteryDisableBelow, selection: $batteryLimit) {
@@ -282,6 +288,14 @@ struct EnergySettings: View {
                 Text(l10n.s.batteryProtectionCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+            Section(l10n.s.keepAwakeTitle) {
+                Picker(l10n.s.keepAwakeIconTintLabel, selection: $keepAwakeIconTint) {
+                    ForEach(KeepAwakeIconTint.allCases) { tint in
+                        Text(tint.title(l10n.s)).tag(tint.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
             }
             Section(l10n.s.clamshellSection) {
                 Toggle(l10n.s.clamshellTitle, isOn: $awake.clamshellPreferred)
@@ -304,6 +318,7 @@ struct EnergySettings: View {
         .onAppear {
             defaultDuration = Defaults.sanitizedDefaultDuration(defaultDuration)
             batteryLimit = Defaults.sanitizedBatteryLimit(batteryLimit)
+            keepAwakeIconTint = Defaults.sanitizedKeepAwakeIconTint(keepAwakeIconTint).rawValue
             awake.refreshPasswordlessStatus()
         }
     }
