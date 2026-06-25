@@ -55,23 +55,88 @@ final class MaxCapacityProbe {
         }
     }
 
-    /// Parses `sppower_battery_health_maximum_capacity` (a string like "95%") out
-    /// of system_profiler's JSON. Returns nil when the field is missing or not a
-    /// usable number (e.g. a macOS that prints a placeholder dash).
+    /// Parses `sppower_battery_health_maximum_capacity` out of system_profiler's
+    /// JSON. macOS has exposed it both as a string ("95%") and as a number in
+    /// beta builds, and the battery block can be nested under `_items`.
+    static func percent(fromSystemProfilerJSON data: Data) -> Int? {
+        guard let root = try? JSONSerialization.jsonObject(with: data) else { return nil }
+        return percent(in: root)
+    }
+
+    /// Returns nil when the field is missing or not a usable number (e.g. a macOS
+    /// that prints a placeholder dash).
     private static func read() -> Int? {
-        let result = Shell.run("/usr/sbin/system_profiler", ["SPPowerDataType", "-json"])
+        let result = runSystemProfiler()
         guard result.status == 0,
-              let data = result.output.data(using: .utf8),
-              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let items = root["SPPowerDataType"] as? [[String: Any]]
+              let data = result.output.data(using: .utf8)
         else { return nil }
-        for item in items {
-            guard let health = item["sppower_battery_health_info"] as? [String: Any],
-                  let raw = health["sppower_battery_health_maximum_capacity"] as? String
-            else { continue }
-            let digits = raw.filter(\.isNumber)
-            if let value = Int(digits), value > 0, value <= 100 { return value }
+        return percent(fromSystemProfilerJSON: data)
+    }
+
+    private static func runSystemProfiler() -> (status: Int32, output: String) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
+        process.arguments = ["SPPowerDataType", "-json"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        do { try process.run() } catch { return (-1, "") }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return (process.terminationStatus, String(data: data, encoding: .utf8) ?? "")
+    }
+
+    private static func percent(in value: Any) -> Int? {
+        if let dict = value as? [String: Any] {
+            if let raw = dict["sppower_battery_health_maximum_capacity"],
+               let percent = percent(fromRawValue: raw) {
+                return percent
+            }
+            for (key, raw) in dict {
+                if normalizedMaximumCapacityKey(key),
+                   let percent = percent(fromRawValue: raw) {
+                    return percent
+                }
+            }
+            for raw in dict.values {
+                if let percent = percent(in: raw) {
+                    return percent
+                }
+            }
+        } else if let array = value as? [Any] {
+            for raw in array {
+                if let percent = percent(in: raw) {
+                    return percent
+                }
+            }
         }
         return nil
+    }
+
+    private static func normalizedMaximumCapacityKey(_ key: String) -> Bool {
+        let normalized = key.lowercased().filter(\.isLetter)
+        return normalized.contains("maximumcapacity")
+    }
+
+    private static func percent(fromRawValue raw: Any) -> Int? {
+        let value: Int?
+        switch raw {
+        case is Bool:
+            value = nil
+        case let raw as Int:
+            value = raw
+        case let raw as NSNumber:
+            value = raw.intValue
+        case let raw as String:
+            guard let range = raw.range(of: #"[0-9]{1,3}"#, options: .regularExpression) else {
+                value = nil
+                break
+            }
+            value = Int(raw[range])
+        default:
+            value = nil
+        }
+        guard let value, value > 0, value <= 100 else { return nil }
+        return value
     }
 }

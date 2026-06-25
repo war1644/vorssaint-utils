@@ -45,3 +45,40 @@ struct CleaningUnlockCounter {
         lastKeyTime = -.greatestFiniteMagnitude
     }
 }
+
+struct CleaningSystemKeyEvent: Equatable {
+    static let systemDefinedEventTypeRawValue: UInt32 = 14
+    static let powerKeySubtype = 1
+    static let auxiliaryControlButtonsSubtype = 8
+    static let keyDownState = 10
+    static let keyUpState = 11
+
+    private static let syntheticKeyCodeBase: Int64 = 10_000
+
+    let code: Int64
+    let isKeyDown: Bool
+    let isRepeat: Bool
+
+    static func decode(subtype: Int, data1: Int) -> CleaningSystemKeyEvent? {
+        switch subtype {
+        case auxiliaryControlButtonsSubtype:
+            return decodeAuxiliaryControl(data1: data1)
+        case powerKeySubtype:
+            return CleaningSystemKeyEvent(code: syntheticKeyCodeBase + Int64(powerKeySubtype),
+                                          isKeyDown: true,
+                                          isRepeat: false)
+        default:
+            return nil
+        }
+    }
+
+    private static func decodeAuxiliaryControl(data1: Int) -> CleaningSystemKeyEvent? {
+        let raw = UInt32(truncatingIfNeeded: data1)
+        let keyCode = Int64((raw >> 16) & 0xffff)
+        let state = Int((raw >> 8) & 0xff)
+        guard state == keyDownState || state == keyUpState else { return nil }
+        return CleaningSystemKeyEvent(code: syntheticKeyCodeBase + keyCode,
+                                      isKeyDown: state == keyDownState,
+                                      isRepeat: (raw & 0x1) != 0)
+    }
+}

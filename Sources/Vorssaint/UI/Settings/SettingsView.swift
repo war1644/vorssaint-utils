@@ -255,10 +255,13 @@ struct UpdatesView: View {
 struct EnergySettings: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var awake = KeepAwakeManager.shared
+    @ObservedObject private var permissions = Permissions.shared
     @AppStorage(DefaultsKey.defaultDuration) private var defaultDuration = 0
     @AppStorage(DefaultsKey.batteryLimit) private var batteryLimit = 10
     @AppStorage(DefaultsKey.keepAwakeAutoStart) private var keepAwakeAutoStart = false
     @AppStorage(DefaultsKey.keepAwakeIconTint) private var keepAwakeIconTint = KeepAwakeIconTint.orange.rawValue
+    @AppStorage(DefaultsKey.keepAwakeMouseJiggleEnabled) private var keepAwakeMouseJiggle = false
+    @AppStorage(DefaultsKey.keepAwakeMouseJiggleInterval) private var keepAwakeMouseJiggleInterval = 5
 
     var body: some View {
         Form {
@@ -272,10 +275,9 @@ struct EnergySettings: View {
                     Text(l10n.s.hours8).tag(480)
                     Text(l10n.s.indefinite).tag(0)
                 }
-                Toggle(l10n.s.keepAwakeAutoStart, isOn: $keepAwakeAutoStart)
-                Text(l10n.s.keepAwakeAutoStartCaption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                SettingsToggleWithCaption(title: l10n.s.keepAwakeAutoStart,
+                                          caption: l10n.s.keepAwakeAutoStartCaption,
+                                          isOn: $keepAwakeAutoStart)
             }
             Section(l10n.s.batteryProtectionSection) {
                 Picker(l10n.s.batteryDisableBelow, selection: $batteryLimit) {
@@ -285,9 +287,7 @@ struct EnergySettings: View {
                     Text("15%").tag(15)
                     Text("20%").tag(20)
                 }
-                Text(l10n.s.batteryProtectionCaption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                SettingsCaptionText(l10n.s.batteryProtectionCaption)
             }
             Section(l10n.s.keepAwakeTitle) {
                 Picker(l10n.s.keepAwakeIconTintLabel, selection: $keepAwakeIconTint) {
@@ -296,6 +296,19 @@ struct EnergySettings: View {
                     }
                 }
                 .pickerStyle(.menu)
+                SettingsToggleWithCaption(title: l10n.s.keepAwakeMouseJiggle,
+                                          caption: l10n.s.keepAwakeMouseJiggleCaption,
+                                          isOn: $keepAwakeMouseJiggle)
+                if keepAwakeMouseJiggle {
+                    Picker(l10n.s.keepAwakeMouseJiggleInterval, selection: $keepAwakeMouseJiggleInterval) {
+                        ForEach(Defaults.allowedKeepAwakeMouseJiggleIntervals, id: \.self) { minutes in
+                            Text(KeepAwakeMouseJiggleIntervalPicker.label(for: minutes)).tag(minutes)
+                        }
+                    }
+                    if !permissions.accessibility {
+                        PermissionRow(kind: .accessibility)
+                    }
+                }
             }
             Section(l10n.s.clamshellSection) {
                 Toggle(l10n.s.clamshellTitle, isOn: $awake.clamshellPreferred)
@@ -309,9 +322,7 @@ struct EnergySettings: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
-                Text(l10n.s.clamshellExplanation)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                SettingsCaptionText(l10n.s.clamshellExplanation)
             }
         }
         .formStyle(.grouped)
@@ -319,6 +330,7 @@ struct EnergySettings: View {
             defaultDuration = Defaults.sanitizedDefaultDuration(defaultDuration)
             batteryLimit = Defaults.sanitizedBatteryLimit(batteryLimit)
             keepAwakeIconTint = Defaults.sanitizedKeepAwakeIconTint(keepAwakeIconTint).rawValue
+            keepAwakeMouseJiggleInterval = Defaults.sanitizedKeepAwakeMouseJiggleInterval(keepAwakeMouseJiggleInterval)
             awake.refreshPasswordlessStatus()
         }
     }
@@ -705,6 +717,40 @@ struct CoffeeButton: View {
             .background(Capsule().fill(Color(red: 1.0, green: 0.84, blue: 0.0)))
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Shared settings rows
+
+private struct SettingsCaptionText: View {
+    let text: String
+
+    init(_ text: String) {
+        self.text = text
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(nil)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+private struct SettingsToggleWithCaption: View {
+    let title: String
+    let caption: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Toggle(isOn: $isOn) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                SettingsCaptionText(caption)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 }
 

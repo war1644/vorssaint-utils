@@ -192,6 +192,14 @@ enum MenuBarRenderer {
         stacked ? 10.2 : 14
     }
 
+    static func networkBlockFontSize(style: MenuBarBlockStyle) -> CGFloat {
+        style == .readable ? 9.8 : 9.2
+    }
+
+    static func networkBlockLineHeight(style: MenuBarBlockStyle) -> CGFloat {
+        style == .readable ? 11.0 : 10.0
+    }
+
     static func reservedStatusItemLength(for metrics: [MenuBarMetric],
                                          includesCountdown: Bool,
                                          allowStacked: Bool = true) -> CGFloat {
@@ -608,7 +616,9 @@ enum MenuBarRenderer {
         let image = networkBlockImage(down: down, up: up, style: style)
         let attachment = NSTextAttachment()
         attachment.image = image
-        attachment.bounds = NSRect(x: 0, y: -4.4, width: image.size.width, height: image.size.height)
+        attachment.bounds = NSRect(x: 0, y: style == .readable ? -6.1 : -5.5,
+                                   width: image.size.width,
+                                   height: image.size.height)
         return NSAttributedString(attachment: attachment)
     }
 
@@ -647,7 +657,7 @@ enum MenuBarRenderer {
         let reservedGroupWidth = dotDiameter + dotGap + reservedValueWidth
         let drawnGroupWidth = dotDiameter + dotGap + valueSize.width
         let width = ceil(max(labelSize.width, reservedGroupWidth) + (style == .readable ? 2 : 0.5))
-        let height: CGFloat = style == .readable ? 22 : 20
+        let height: CGFloat = style == .readable ? 23 : 21
         let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { rect in
             NSColor.clear.setFill()
             rect.fill()
@@ -679,21 +689,26 @@ enum MenuBarRenderer {
         let cacheKey = "network|\(down)|\(up)|\(style)" as NSString
         if let cached = blockImageCache.object(forKey: cacheKey) { return cached }
 
-        let font = NSFont.monospacedSystemFont(ofSize: style == .readable ? 8.6 : 8.0,
+        let font = NSFont.monospacedSystemFont(ofSize: networkBlockFontSize(style: style),
                                                weight: .semibold)
         let sizingAttrs: [NSAttributedString.Key: Any] = [.font: font]
         let lines = ["↓\(down)", "↑\(up)"]
-        let lineHeight: CGFloat = style == .readable ? 9.4 : 8.7
+        let lineHeight = networkBlockLineHeight(style: style)
         let reservedLines = lines + ["↓000B", "↑000B"]
-        let width = reservedLines.map { ($0 as NSString).size(withAttributes: sizingAttrs).width }.max() ?? 22
-        let imageSize = NSSize(width: ceil(width), height: ceil(lineHeight * 2))
+        let width = (reservedLines.map { ($0 as NSString).size(withAttributes: sizingAttrs).width }.max() ?? 22)
+            + (style == .readable ? 1.5 : 1.0)
+        let height: CGFloat = style == .readable ? 22 : 20
+        let imageSize = NSSize(width: ceil(width), height: height)
         let image = NSImage(size: imageSize, flipped: false) { rect in
             NSColor.clear.setFill()
             rect.fill()
             let attrs = dynamicTextAttributes(font: font)
+            let textSize = ("↓000B" as NSString).size(withAttributes: attrs)
+            let contentHeight = lineHeight + textSize.height
+            let bottomY = (imageSize.height - contentHeight) / 2
             for (index, line) in lines.enumerated() {
-                let y = imageSize.height - lineHeight * CGFloat(index + 1) + 0.2
-                (line as NSString).draw(at: NSPoint(x: 0, y: y), withAttributes: attrs)
+                let y = bottomY + lineHeight * CGFloat(1 - index)
+                (line as NSString).draw(at: NSPoint(x: 0.5, y: y), withAttributes: attrs)
             }
             return true
         }

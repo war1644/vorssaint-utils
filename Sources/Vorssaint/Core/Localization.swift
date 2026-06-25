@@ -129,6 +129,9 @@ struct Strings {
     let keepAwakeUntilDisabled: String
     let keepAwakeNormalRules: String
     let keepAwakeOptions: String
+    let keepAwakeMouseJiggle: String
+    let keepAwakeMouseJiggleCaption: String
+    let keepAwakeMouseJiggleInterval: String
     let keepAwakeIconTintLabel: String
     let keepAwakeIconTintOrange: String
     let keepAwakeIconTintGreen: String
@@ -166,6 +169,7 @@ struct Strings {
     let notifyBatteryBody: String
 
     // MARK: Administrator prompts (shown by macOS password dialogs)
+    let adminPromptClamshellOn: String
     let adminPromptClamshellOff: String
     let adminPromptRecover: String
     let adminPromptSudoersInstall: String
@@ -800,6 +804,9 @@ extension Strings {
         keepAwakeUntilDisabled: "Ativo até você desativar",
         keepAwakeNormalRules: "O Mac segue as regras normais de energia",
         keepAwakeOptions: "Opções",
+        keepAwakeMouseJiggle: "Mover cursor levemente",
+        keepAwakeMouseJiggleCaption: "Durante uma sessão, move o cursor um pouco no intervalo escolhido.",
+        keepAwakeMouseJiggleInterval: "Intervalo",
         keepAwakeIconTintLabel: "Cor do ícone ativo",
         keepAwakeIconTintOrange: "Laranja",
         keepAwakeIconTintGreen: "Verde",
@@ -833,6 +840,7 @@ extension Strings {
         notifySessionEndedBody: "O tempo acabou. O Mac voltará a suspender normalmente.",
         notifyBatteryTitle: "Vorssaint desativado",
         notifyBatteryBody: "Bateria baixa. A suspensão normal foi restaurada para proteger a carga.",
+        adminPromptClamshellOn: "O Vorssaint precisa da sua senha para manter o Mac ativo com a tampa fechada.",
         adminPromptClamshellOff: "O Vorssaint precisa da sua senha para reativar a suspensão normal do Mac.",
         adminPromptRecover: "O Vorssaint foi encerrado com a suspensão do Mac desativada. Digite a senha para restaurar a suspensão normal.",
         adminPromptSudoersInstall: "O Vorssaint vai criar uma regra restrita (somente pmset disablesleep) para alternar a tampa fechada sem pedir senha. Esta é a única vez que a senha será necessária.",
@@ -876,14 +884,14 @@ extension Strings {
         sessionSection: "Sessão",
         defaultDurationLabel: "Duração padrão",
         keepAwakeAutoStart: "Ativar ao abrir o app",
-        keepAwakeAutoStartCaption: "Inicia “Manter acordado” automaticamente quando o Vorssaint abrir.",
+        keepAwakeAutoStartCaption: "Inicia “Manter acordado” automaticamente.",
         batteryProtectionSection: "Proteção de bateria",
         batteryDisableBelow: "Desativar com bateria abaixo de",
         batteryNever: "Nunca",
         batteryProtectionCaption: "Evita que uma sessão esquecida drene a bateria do MacBook.",
         clamshellSection: "Tampa fechada",
         configuring: "Configurando…",
-        sudoersFailed: "Não foi possível ativar. Desligue e ligue de novo para tentar.",
+        sudoersFailed: "Não foi possível ativar a tampa fechada. Tente de novo.",
         clamshellExplanation: "“Continuar com a tampa fechada” desativa completamente a suspensão enquanto “Manter acordado” estiver ativo e é revertido automaticamente quando a sessão termina ou o app é encerrado. Prefira usá-lo conectado à energia.",
 
         scrollSection: "Rolagem",
@@ -1437,6 +1445,9 @@ extension Strings {
         keepAwakeUntilDisabled: "Active until you turn it off",
         keepAwakeNormalRules: "The Mac follows its normal energy rules",
         keepAwakeOptions: "Options",
+        keepAwakeMouseJiggle: "Move pointer slightly",
+        keepAwakeMouseJiggleCaption: "During a session, moves the pointer a little at the chosen interval.",
+        keepAwakeMouseJiggleInterval: "Interval",
         keepAwakeIconTintLabel: "Active icon color",
         keepAwakeIconTintOrange: "Orange",
         keepAwakeIconTintGreen: "Green",
@@ -1470,6 +1481,7 @@ extension Strings {
         notifySessionEndedBody: "Time is up. The Mac will sleep normally again.",
         notifyBatteryTitle: "Vorssaint disabled",
         notifyBatteryBody: "Low battery. Normal sleep was restored to protect the charge.",
+        adminPromptClamshellOn: "Vorssaint needs your password to keep the Mac going with the lid closed.",
         adminPromptClamshellOff: "Vorssaint needs your password to restore the Mac's normal sleep.",
         adminPromptRecover: "Vorssaint quit while the Mac's sleep was disabled. Enter the password to restore normal sleep.",
         adminPromptSudoersInstall: "Vorssaint will create a restricted rule (pmset disablesleep only) to toggle closed-lid mode without asking for a password. This is the only time the password is needed.",
@@ -1513,14 +1525,14 @@ extension Strings {
         sessionSection: "Session",
         defaultDurationLabel: "Default duration",
         keepAwakeAutoStart: "Turn on when the app opens",
-        keepAwakeAutoStartCaption: "Starts “Keep awake” automatically when Vorssaint opens.",
+        keepAwakeAutoStartCaption: "Starts “Keep awake” automatically.",
         batteryProtectionSection: "Battery protection",
         batteryDisableBelow: "Disable when battery drops below",
         batteryNever: "Never",
         batteryProtectionCaption: "Keeps a forgotten session from draining the MacBook battery.",
         clamshellSection: "Closed lid",
         configuring: "Configuring…",
-        sudoersFailed: "Couldn't turn it on. Switch it off and on again to retry.",
+        sudoersFailed: "Couldn't turn on closed-lid mode. Try again.",
         clamshellExplanation: "“Keep going with the lid closed” fully disables sleep while “Keep awake” is active and is reverted automatically when the session ends or the app quits. Prefer using it plugged in.",
 
         scrollSection: "Scrolling",

@@ -1521,9 +1521,12 @@ struct UpdateBanner: View {
 struct KeepAwakeCard: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var awake = KeepAwakeManager.shared
+    @ObservedObject private var permissions = Permissions.shared
     @AppStorage(DefaultsKey.defaultDuration) private var defaultDuration: Int = 0
     @AppStorage(DefaultsKey.keepAwakeAutoStart) private var keepAwakeAutoStart = false
     @AppStorage(DefaultsKey.keepAwakeIconTint) private var keepAwakeIconTint = KeepAwakeIconTint.orange.rawValue
+    @AppStorage(DefaultsKey.keepAwakeMouseJiggleEnabled) private var keepAwakeMouseJiggle = false
+    @AppStorage(DefaultsKey.keepAwakeMouseJiggleInterval) private var keepAwakeMouseJiggleInterval = 5
     @State private var optionsExpanded = false
     var collapsible = true
 
@@ -1574,6 +1577,7 @@ struct KeepAwakeCard: View {
         .onAppear {
             defaultDuration = Defaults.sanitizedDefaultDuration(defaultDuration)
             keepAwakeIconTint = Defaults.sanitizedKeepAwakeIconTint(keepAwakeIconTint).rawValue
+            keepAwakeMouseJiggleInterval = Defaults.sanitizedKeepAwakeMouseJiggleInterval(keepAwakeMouseJiggleInterval)
         }
     }
 
@@ -1603,10 +1607,45 @@ struct KeepAwakeCard: View {
                               caption: l10n.s.keepAwakeAutoStartCaption,
                               isOn: $keepAwakeAutoStart,
                               disabled: false)
+                    optionRow(title: l10n.s.keepAwakeMouseJiggle,
+                              caption: mouseJiggleCaption,
+                              isOn: $keepAwakeMouseJiggle,
+                              disabled: false,
+                              captionIsError: mouseJiggleNeedsAccessibility)
+                    if keepAwakeMouseJiggle {
+                        mouseJiggleIntervalRow
+                        if mouseJiggleNeedsAccessibility {
+                            Button(l10n.s.permissionRequest) {
+                                grantAccessibility()
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        }
+                    }
                 }
                 .padding(.leading, 19)
             }
         }
+    }
+
+    private var mouseJiggleIntervalRow: some View {
+        HStack(spacing: 8) {
+            Text(l10n.s.keepAwakeMouseJiggleInterval)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+            KeepAwakeMouseJiggleIntervalPicker(selection: $keepAwakeMouseJiggleInterval)
+        }
+    }
+
+    private var mouseJiggleNeedsAccessibility: Bool {
+        keepAwakeMouseJiggle && !permissions.accessibility
+    }
+
+    private var mouseJiggleCaption: String {
+        mouseJiggleNeedsAccessibility
+            ? "\(l10n.s.permissionRequired): \(l10n.s.permissionAccessibility)"
+            : l10n.s.keepAwakeMouseJiggleCaption
     }
 
     private var iconTintRow: some View {
@@ -1695,6 +1734,11 @@ struct KeepAwakeCard: View {
         )
     }
 
+    private func grantAccessibility() {
+        Permissions.shared.requestAccessibility()
+        Permissions.shared.openAccessibilitySettings()
+    }
+
     private func optionRow(title: String,
                            caption: String?,
                            isOn: Binding<Bool>,
@@ -1708,9 +1752,12 @@ struct KeepAwakeCard: View {
                     Text(caption)
                         .font(.system(size: 10))
                         .foregroundStyle(captionIsError ? Color.red : Color.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Spacer(minLength: 8)
             Toggle("", isOn: isOn)
                 .toggleStyle(.switch)
                 .controlSize(.mini)
@@ -1758,5 +1805,25 @@ struct DurationPicker: View {
         .pickerStyle(.menu)
         .controlSize(.small)
         .fixedSize()
+    }
+}
+
+struct KeepAwakeMouseJiggleIntervalPicker: View {
+    @Binding var selection: Int
+
+    var body: some View {
+        Picker("", selection: $selection) {
+            ForEach(Defaults.allowedKeepAwakeMouseJiggleIntervals, id: \.self) { minutes in
+                Text(Self.label(for: minutes)).tag(minutes)
+            }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+        .controlSize(.small)
+        .fixedSize()
+    }
+
+    static func label(for minutes: Int) -> String {
+        "\(minutes) min"
     }
 }

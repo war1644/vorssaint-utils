@@ -16,6 +16,8 @@ enum DefaultsKey {
     static let defaultDuration = "defaultDurationMinutes" // 0 = indefinite
     static let batteryLimit = "batteryLimitPercent"       // 0 = never
     static let keepAwakeAutoStart = "keepAwakeAutoStart"  // start Keep Awake when the app launches
+    static let keepAwakeMouseJiggleEnabled = "keepAwakeMouseJiggleEnabled"
+    static let keepAwakeMouseJiggleInterval = "keepAwakeMouseJiggleIntervalMinutes"
     static let hotkeyEnabled = "hotkeyEnabled"
     static let keepAwakeShortcut = "keepAwakeShortcut"    // GlobalShortcut storage value
     static let keepAwakeIconTint = "keepAwakeIconTint"    // KeepAwakeIconTint.rawValue
@@ -254,6 +256,7 @@ enum Defaults {
     static let mandatoryAutoQuitExceptionBundleIDs = [finderBundleIdentifier]
 
     static let allowedDurations = [0, 15, 30, 60, 120, 240, 480]
+    static let allowedKeepAwakeMouseJiggleIntervals = [1, 2, 5, 10, 15]
     static let allowedBatteryLimits = [0, 5, 10, 15, 20]
     static let allowedMonitorIntervals = [1, 2, 5]
     static let allowedMenuBarPresets = ["dense"]
@@ -275,6 +278,8 @@ enum Defaults {
         DefaultsKey.defaultDuration: 0,
         DefaultsKey.batteryLimit: 10,
         DefaultsKey.keepAwakeAutoStart: false,
+        DefaultsKey.keepAwakeMouseJiggleEnabled: false,
+        DefaultsKey.keepAwakeMouseJiggleInterval: 5,
         DefaultsKey.hotkeyEnabled: true,
         DefaultsKey.keepAwakeShortcut: "control+option+command:40",
         DefaultsKey.keepAwakeIconTint: KeepAwakeIconTint.orange.rawValue,
@@ -426,6 +431,10 @@ enum Defaults {
 
     static func sanitizedBatteryLimit(_ percent: Int) -> Int {
         allowedBatteryLimits.contains(percent) ? percent : 10
+    }
+
+    static func sanitizedKeepAwakeMouseJiggleInterval(_ minutes: Int) -> Int {
+        allowedKeepAwakeMouseJiggleIntervals.contains(minutes) ? minutes : 5
     }
 
     static func sanitizedKeepAwakeIconTint(_ rawValue: String?) -> KeepAwakeIconTint {

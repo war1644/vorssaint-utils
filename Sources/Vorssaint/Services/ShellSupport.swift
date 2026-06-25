@@ -67,10 +67,11 @@ enum AdminShell {
         if Thread.isMainThread {
             NSApp.activate(ignoringOtherApps: true)
         } else {
-            DispatchQueue.main.async {
+            DispatchQueue.main.sync {
                 NSApp.activate(ignoringOtherApps: true)
             }
         }
+        Thread.sleep(forTimeInterval: 0.12)
     }
 
     private static func appleScriptString(_ value: String) -> String {
@@ -102,7 +103,11 @@ enum Sudoers {
 
     /// `sudo -n -l <cmd>` exits 0 only when the command can run without a password.
     static func isConfigured() -> Bool {
-        Shell.run("/usr/bin/sudo", ["-n", "-l", "/usr/bin/pmset", "disablesleep", "1"]).status == 0
+        canListDisableSleep("1") && canListDisableSleep("0")
+    }
+
+    private static func canListDisableSleep(_ value: String) -> Bool {
+        Shell.run("/usr/bin/sudo", ["-n", "-l", "/usr/bin/pmset", "disablesleep", value]).status == 0
     }
 
     static func install(completion: @escaping (Bool) -> Void) {
@@ -114,7 +119,7 @@ enum Sudoers {
         // Clear any earlier-named rule first, then write and validate the new one
         // (a failed check rolls back). Same password prompt either way.
         let legacy = legacyRulePaths.joined(separator: " ")
-        let command = "rm -f \(legacy); echo '\(rule)' > \(rulePath) && chmod 0440 \(rulePath) && /usr/sbin/visudo -c -f \(rulePath) || { rm -f \(rulePath); exit 1; }"
+        let command = "mkdir -p /etc/sudoers.d && chmod 0755 /etc/sudoers.d && rm -f \(legacy) && echo '\(rule)' > \(rulePath) && chmod 0440 \(rulePath) && /usr/sbin/visudo -c -f \(rulePath) || { rm -f \(rulePath); exit 1; }"
         AdminShell.run(command, prompt: L10n.shared.s.adminPromptSudoersInstall) { ok in
             completion(ok && isConfigured())
         }

@@ -106,15 +106,17 @@ struct MenuBarMetricsPreview: View {
                         style: style,
                         pressure: pressure)
         case let .networkBlock(down, up, style):
-            VStack(alignment: .leading, spacing: -0.8) {
+            VStack(alignment: .leading, spacing: -0.6) {
                 Text("↓\(down)")
                 Text("↑\(up)")
             }
-            .font(.system(size: style == .readable ? 8.6 : 8,
+            .font(.system(size: MenuBarRenderer.networkBlockFontSize(style: style),
                           weight: .semibold,
                           design: .monospaced))
             .foregroundStyle(.white)
-            .frame(minWidth: style == .readable ? 34 : 31, alignment: .leading)
+            .frame(minWidth: style == .readable ? 39 : 36,
+                   minHeight: style == .readable ? 22 : 20,
+                   alignment: .center)
             .fixedSize(horizontal: true, vertical: true)
         case let .batteryBlock(percent, isCharging, style):
             HStack(spacing: style == .readable ? 5 : 4) {

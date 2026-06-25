@@ -110,6 +110,19 @@ struct MetricsTests {
         expect(smart?.unsafeShutdowns == 13, "SMART reading includes unsafe shutdowns")
         expect(smart?.mediaErrors == 14, "SMART reading includes media errors")
 
+        let maxCapacityStringJSON = Data(#"{"SPPowerDataType":[{"sppower_battery_health_info":{"sppower_battery_health_maximum_capacity":"93%"}}]}"#.utf8)
+        expect(MaxCapacityProbe.percent(fromSystemProfilerJSON: maxCapacityStringJSON) == 93,
+               "battery maximum capacity parses percentage strings")
+        let maxCapacityNumberJSON = Data(#"{"SPPowerDataType":[{"sppower_battery_health_info":{"sppower_battery_health_maximum_capacity":93}}]}"#.utf8)
+        expect(MaxCapacityProbe.percent(fromSystemProfilerJSON: maxCapacityNumberJSON) == 93,
+               "battery maximum capacity parses numeric JSON")
+        let maxCapacityNestedJSON = Data(#"{"SPPowerDataType":[{"_items":[{"_items":[{"Maximum Capacity":"93%"}]}]}]}"#.utf8)
+        expect(MaxCapacityProbe.percent(fromSystemProfilerJSON: maxCapacityNestedJSON) == 93,
+               "battery maximum capacity parses nested System Report keys")
+        let maxCapacityUnavailableJSON = Data(#"{"SPPowerDataType":[{"sppower_battery_health_info":{"sppower_battery_health_maximum_capacity":"EM_DASH"}}]}"#.utf8)
+        expect(MaxCapacityProbe.percent(fromSystemProfilerJSON: maxCapacityUnavailableJSON) == nil,
+               "battery maximum capacity ignores placeholder values")
+
         // MARK: Watts & percent
 
         expectEqual(MetricFormat.watts(8.5), "8.5 W", "watts under 10")
@@ -224,6 +237,14 @@ struct MetricsTests {
                "keep awake shortcut defaults to Ctrl+Opt+Cmd+K")
         expect(registeredDefaults[DefaultsKey.keepAwakeIconTint] as? String == KeepAwakeIconTint.orange.rawValue,
                "keep-awake active icon tint defaults to orange")
+        expect(registeredDefaults[DefaultsKey.keepAwakeMouseJiggleEnabled] as? Bool == false,
+               "Keep Awake mouse movement is opt-in")
+        expect(registeredDefaults[DefaultsKey.keepAwakeMouseJiggleInterval] as? Int == 5,
+               "Keep Awake mouse movement defaults to five minutes")
+        expect(Defaults.sanitizedKeepAwakeMouseJiggleInterval(10) == 10,
+               "valid Keep Awake mouse movement interval is preserved")
+        expect(Defaults.sanitizedKeepAwakeMouseJiggleInterval(3) == 5,
+               "invalid Keep Awake mouse movement interval falls back to five minutes")
         expect(Defaults.sanitizedKeepAwakeIconTint("pink") == .pink,
                "valid keep-awake active icon tint is preserved")
         expect(Defaults.sanitizedKeepAwakeIconTint("bad") == .orange,
@@ -894,6 +915,178 @@ struct MetricsTests {
                                                       desiredWindowID: nil)
         expect(closeLast.shouldEndSession && closeLast.remainingWindowIDs.isEmpty,
                "Dock Preview close ends the panel when the last window is removed")
+        expect(SwitcherSupport.activationPlan(targetsSpecificWindow: true)
+               == SwitcherActivationPlan(activateAllWindows: false,
+                                         makeAppFrontmostAfterActivation: false,
+                                         restoreSourceWhenTargetMinimizes: true),
+               "App Switcher keeps specific-window activation scoped to one window")
+        expect(SwitcherSupport.activationPlan(targetsSpecificWindow: false)
+               == SwitcherActivationPlan(activateAllWindows: true,
+                                         makeAppFrontmostAfterActivation: true,
+                                         restoreSourceWhenTargetMinimizes: false),
+               "App Switcher can activate the full app for app-only entries")
+        expect(!SwitcherSupport.shouldActivateAllWindows(targetsSpecificWindow: true),
+               "App Switcher activates only the selected window when a window target exists")
+        expect(SwitcherSupport.shouldActivateAllWindows(targetsSpecificWindow: false),
+               "App Switcher can activate the full app for app-only entries")
+        expect(SwitcherSupport.shouldRestoreSourceAfterTargetMinimize(targetPID: 10,
+                                                                      sourcePID: 20,
+                                                                      frontmostPID: 10,
+                                                                      targetIsMinimized: true,
+                                                                      ownPID: 99),
+               "App Switcher restores the previous app when a specific target window is minimized")
+        expect(!SwitcherSupport.shouldRestoreSourceAfterTargetMinimize(targetPID: 10,
+                                                                       sourcePID: 10,
+                                                                       frontmostPID: 10,
+                                                                       targetIsMinimized: true,
+                                                                       ownPID: 99),
+               "App Switcher does not restore when the source is another window from the same app")
+        expect(!SwitcherSupport.shouldRestoreSourceAfterTargetMinimize(targetPID: 10,
+                                                                       sourcePID: 20,
+                                                                       frontmostPID: 30,
+                                                                       targetIsMinimized: true,
+                                                                       ownPID: 99),
+               "App Switcher does not steal focus if the user already moved to another app")
+        expect(SwitcherSupport.shouldRestoreSourceAfterTargetMinimize(targetPID: 10,
+                                                                      sourcePID: 20,
+                                                                      frontmostPID: 30,
+                                                                      targetIsMinimized: true,
+                                                                      ownPID: 99,
+                                                                      frontmostMatchesTargetBundle: true),
+               "App Switcher restores the previous app if a sibling app instance is promoted after minimize")
+        expect(SwitcherSupport.shouldRestoreSourceAfterTargetMinimize(targetPID: 10,
+                                                                      sourcePID: 20,
+                                                                      frontmostPID: 30,
+                                                                      targetIsMinimized: true,
+                                                                      ownPID: 99,
+                                                                      frontmostCanBeSystemPromotion: true),
+               "App Switcher restores the previous app if the system promotes another window during minimize")
+        expect(!SwitcherSupport.shouldRestoreSourceAfterTargetMinimize(targetPID: 10,
+                                                                       sourcePID: 20,
+                                                                       frontmostPID: 10,
+                                                                       targetIsMinimized: false,
+                                                                       ownPID: 99),
+               "App Switcher restores the previous app only after the target window is minimized")
+        expect(SwitcherSupport.shouldRestoreSourceAfterTargetMinimizeIntent(targetPID: 10,
+                                                                            sourcePID: 20,
+                                                                            frontmostPID: 10,
+                                                                            focusedWindowID: 44,
+                                                                            targetWindowID: 44,
+                                                                            targetIsMinimized: true,
+                                                                            ownPID: 99),
+               "App Switcher restores the source after a minimize-button intent once the target is minimized")
+        expect(SwitcherSupport.shouldRestoreSourceAfterTargetMinimizeIntent(targetPID: 10,
+                                                                            sourcePID: 20,
+                                                                            frontmostPID: 10,
+                                                                            focusedWindowID: 55,
+                                                                            targetWindowID: 44,
+                                                                            targetIsMinimized: false,
+                                                                            ownPID: 99),
+               "App Switcher restores the source if the target app focuses another window after minimize intent")
+        expect(!SwitcherSupport.shouldRestoreSourceAfterTargetMinimizeIntent(targetPID: 10,
+                                                                             sourcePID: 20,
+                                                                             frontmostPID: 10,
+                                                                             focusedWindowID: 44,
+                                                                             targetWindowID: 44,
+                                                                             targetIsMinimized: false,
+                                                                             ownPID: 99),
+               "App Switcher waits when minimize intent is observed but the target remains focused and unminimized")
+        expect(!SwitcherSupport.shouldRestoreSourceAfterTargetMinimizeIntent(targetPID: 10,
+                                                                             sourcePID: 20,
+                                                                             frontmostPID: 30,
+                                                                             focusedWindowID: 55,
+                                                                             targetWindowID: 44,
+                                                                             targetIsMinimized: false,
+                                                                             ownPID: 99),
+               "App Switcher does not restore source after minimize intent if a third app is already active")
+        expect(SwitcherSupport.shouldRestoreSourceAfterTargetMinimizeIntent(targetPID: 10,
+                                                                            sourcePID: 20,
+                                                                            frontmostPID: 30,
+                                                                            focusedWindowID: 55,
+                                                                            targetWindowID: 44,
+                                                                            targetIsMinimized: true,
+                                                                            ownPID: 99,
+                                                                            frontmostMatchesTargetBundle: true),
+               "App Switcher restores after minimize intent if a sibling app instance is promoted")
+        expect(SwitcherSupport.shouldRestoreSourceAfterTargetMinimizeIntent(targetPID: 10,
+                                                                            sourcePID: 20,
+                                                                            frontmostPID: 30,
+                                                                            focusedWindowID: 55,
+                                                                            targetWindowID: 44,
+                                                                            targetIsMinimized: true,
+                                                                            ownPID: 99,
+                                                                            frontmostCanBeSystemPromotion: true),
+               "App Switcher restores after minimize intent if the system promotes another app")
+        expect(!SwitcherSupport.shouldRestoreSourceAfterTargetMinimizeIntent(targetPID: 10,
+                                                                             sourcePID: 10,
+                                                                             frontmostPID: 10,
+                                                                             focusedWindowID: 55,
+                                                                             targetWindowID: 44,
+                                                                             targetIsMinimized: true,
+                                                                             ownPID: 99),
+               "App Switcher does not restore source after minimize intent within the same app")
+        expect(SwitcherSupport.shouldStageSourceBehindTarget(targetPID: 10,
+                                                             sourcePID: 20,
+                                                             sourceWindowID: 44),
+               "App Switcher can keep the source window directly behind a selected target window")
+        expect(!SwitcherSupport.shouldStageSourceBehindTarget(targetPID: 10,
+                                                              sourcePID: 10,
+                                                              sourceWindowID: 44),
+               "App Switcher does not stage a source window from the same app")
+        expect(!SwitcherSupport.shouldStageSourceBehindTarget(targetPID: 10,
+                                                              sourcePID: 20,
+                                                              sourceWindowID: nil),
+               "App Switcher does not stage without a concrete source window")
+        expect(SwitcherSupport.shouldContinueFocusRetry(targetPID: 10,
+                                                        sourcePID: 20,
+                                                        frontmostPID: 10,
+                                                        targetIsMinimized: false,
+                                                        ownPID: 99),
+               "App Switcher focus retries can continue while the selected target app is still active")
+        expect(SwitcherSupport.shouldContinueFocusRetry(targetPID: 10,
+                                                        sourcePID: 20,
+                                                        frontmostPID: 20,
+                                                        targetIsMinimized: false,
+                                                        ownPID: 99),
+               "App Switcher focus retries can continue during the source-target handoff")
+        expect(!SwitcherSupport.shouldContinueFocusRetry(targetPID: 10,
+                                                         sourcePID: 20,
+                                                         frontmostPID: 20,
+                                                         targetIsMinimized: true,
+                                                         ownPID: 99),
+               "App Switcher focus retries stop once the selected target window was minimized")
+        expect(!SwitcherSupport.shouldContinueFocusRetry(targetPID: 10,
+                                                         sourcePID: 20,
+                                                         frontmostPID: 30,
+                                                         targetIsMinimized: false,
+                                                         ownPID: 99),
+               "App Switcher focus retries do not steal focus after the user moves to another app")
+        expect(SwitcherSupport.shouldKeepMinimizeRestoreObserver(targetPID: 10,
+                                                                 sourcePID: 20,
+                                                                 activatedPID: 10,
+                                                                 ownPID: 99),
+               "App Switcher keeps the minimize observer when the target app remains active")
+        expect(SwitcherSupport.shouldKeepMinimizeRestoreObserver(targetPID: 10,
+                                                                 sourcePID: 20,
+                                                                 activatedPID: 20,
+                                                                 ownPID: 99),
+               "App Switcher keeps the minimize observer when the source app is staged behind the target")
+        expect(SwitcherSupport.shouldKeepMinimizeRestoreObserver(targetPID: 10,
+                                                                 sourcePID: 20,
+                                                                 activatedPID: 99,
+                                                                 ownPID: 99),
+               "App Switcher keeps the minimize observer through its own activation handoff")
+        expect(!SwitcherSupport.shouldKeepMinimizeRestoreObserver(targetPID: 10,
+                                                                  sourcePID: 20,
+                                                                  activatedPID: 30,
+                                                                  ownPID: 99),
+               "App Switcher cancels the minimize observer when the user moves to a third app")
+        expect(SwitcherSupport.shouldKeepMinimizeRestoreObserver(targetPID: 10,
+                                                                 sourcePID: 20,
+                                                                 activatedPID: 30,
+                                                                 ownPID: 99,
+                                                                 activatedMatchesTargetBundle: true),
+               "App Switcher keeps the minimize observer when a sibling app instance activates")
         let switcherCloseSelected = SwitcherSupport.closeState(afterRemoving: "b",
                                                                itemIDs: ["a", "b", "c"],
                                                                selectedIndex: 1)
@@ -1278,6 +1471,41 @@ struct MetricsTests {
         expect(cleared.progress == 0, "reset clears progress")
         let afterReset2 = cleared.registerKeyDown(code: 1, time: 0.4, isRepeat: false)
         expect(!afterReset2 && cleared.progress == 1, "after reset the same key starts fresh at 1")
+
+        func systemKeyData(keyCode: Int, state: Int, repeatFlag: Bool = false) -> Int {
+            Int((UInt32(keyCode) << 16) | (UInt32(state) << 8) | (repeatFlag ? 1 : 0))
+        }
+
+        let brightnessDown = CleaningSystemKeyEvent.decode(
+            subtype: CleaningSystemKeyEvent.auxiliaryControlButtonsSubtype,
+            data1: systemKeyData(keyCode: 3, state: CleaningSystemKeyEvent.keyDownState)
+        )
+        expect(brightnessDown?.isKeyDown == true && brightnessDown?.isRepeat == false,
+               "brightness key down is decoded from system-defined events")
+
+        let volumeUpRepeat = CleaningSystemKeyEvent.decode(
+            subtype: CleaningSystemKeyEvent.auxiliaryControlButtonsSubtype,
+            data1: systemKeyData(keyCode: 0, state: CleaningSystemKeyEvent.keyDownState, repeatFlag: true)
+        )
+        expect(volumeUpRepeat?.isKeyDown == true && volumeUpRepeat?.isRepeat == true,
+               "system-defined auto-repeat is preserved")
+
+        let mediaNextUp = CleaningSystemKeyEvent.decode(
+            subtype: CleaningSystemKeyEvent.auxiliaryControlButtonsSubtype,
+            data1: systemKeyData(keyCode: 17, state: CleaningSystemKeyEvent.keyUpState)
+        )
+        expect(mediaNextUp?.isKeyDown == false,
+               "system-defined key up is decoded without advancing unlock")
+
+        let powerKey = CleaningSystemKeyEvent.decode(
+            subtype: CleaningSystemKeyEvent.powerKeySubtype,
+            data1: 0
+        )
+        expect(powerKey?.isKeyDown == true && powerKey?.isRepeat == false,
+               "power and lock key system events are recognized")
+
+        let unrelatedSystemEvent = CleaningSystemKeyEvent.decode(subtype: 99, data1: 0)
+        expect(unrelatedSystemEvent == nil, "unrelated system-defined events do not count as unlock keys")
 
         // MARK: Result
 

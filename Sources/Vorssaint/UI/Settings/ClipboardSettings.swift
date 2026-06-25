@@ -51,7 +51,6 @@ struct ClipboardSettings: View {
 
             Section(text.shortcut) {
                 Toggle(text.shortcut, isOn: $shortcutEnabled)
-                    .disabled(!enabled)
                     .onChange(of: shortcutEnabled) { _, _ in
                         ClipboardHistoryService.shared.syncHotkey()
                     }

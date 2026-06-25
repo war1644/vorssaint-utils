@@ -190,18 +190,19 @@ struct PowerSection: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(label)
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.primary.opacity(0.74))
                 if let caption {
                     Text(caption)
                         .font(.system(size: 9.5))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                 }
             }
-            Spacer()
+            Spacer(minLength: 8)
             Text(value)
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .contentTransition(.numericText())
+                .frame(minWidth: 44, alignment: .trailing)
             if editing {
                 PanelInlineHideButton(isVisible: visible)
             }

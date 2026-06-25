@@ -132,7 +132,9 @@ struct SystemSection: View {
 
     private var orderedBlocks: [Block] {
         _ = systemOrderRaw
-        return PanelLayout.itemOrder(Block.self, key: DefaultsKey.panelSystemOrder)
+        // Alert rules are configured in Settings. Keeping them out of the panel
+        // avoids presenting the same controls twice.
+        return PanelLayout.itemOrder(Block.self, key: DefaultsKey.panelSystemOrder).filter { $0 != .alerts }
     }
 
     private var blockOrderBinding: Binding<[Block]> {
@@ -397,7 +399,7 @@ struct SystemSection: View {
             HStack(spacing: 8) {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
                     .rotationEffect(.degrees(expanded == .energy ? 90 : 0))
                 Text(l10n.s.energyAppsTitle)
                     .font(.system(size: 10.5, weight: .medium))
@@ -424,10 +426,10 @@ struct SystemSection: View {
             HStack(spacing: 6) {
                 Image(systemName: "clock")
                     .font(.system(size: 9))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
                 Text("\(l10n.s.systemUptime) \(Self.uptimeString())")
-                    .font(.system(size: 10.5))
-                    .foregroundStyle(.tertiary)
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(.secondary)
                 Spacer()
                 if editing {
                     PanelInlineHideButton(isVisible: $sysUptime)
@@ -474,7 +476,7 @@ struct SystemSection: View {
         HStack(spacing: 8) {
             Image(systemName: "chevron.right")
                 .font(.system(size: 8, weight: .semibold))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
                 .rotationEffect(.degrees(expanded == kind ? 90 : 0))
                 .opacity(isInteractive ? 1 : 0.35)
             Text(label)
@@ -536,7 +538,7 @@ struct SystemSection: View {
         HStack(spacing: 8) {
             Image(systemName: "chevron.right")
                 .font(.system(size: 8, weight: .semibold))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
                 .rotationEffect(.degrees(expanded == .memory ? 90 : 0))
                 .opacity(isInteractive ? 1 : 0.35)
             Text(l10n.s.memoryPressure)
@@ -555,8 +557,8 @@ struct SystemSection: View {
 
     private func subsectionLabel(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(.tertiary)
+            .font(.system(size: 10.5, weight: .semibold))
+            .foregroundStyle(.secondary)
     }
 
     @ViewBuilder
@@ -575,7 +577,7 @@ struct SystemSection: View {
                         HStack(spacing: 8) {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 8, weight: .semibold))
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(.secondary)
                                 .rotationEffect(.degrees(alertsExpanded ? 90 : 0))
                             subsectionLabel(text.section)
                             Spacer(minLength: 0)

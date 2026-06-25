@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.1.3] - 2026-06-25
+
+### Summary
+Vorssaint 3.1.3 makes Cleaning Mode, Keep Awake, Monitor, Clipboard History and the Window Switcher more reliable, improves readability in the panel and adds optional pointer movement for Keep Awake sessions.
+
+### Added
+- Keep Awake can now move the pointer slightly at a chosen interval during
+  active sessions, if enabled.
+
+### Fixed
+- Cleaning Mode now blocks brightness, media, volume and lock keys while the
+  keyboard is locked.
+- Keep Awake option text no longer gets cut off in the panel or Energy settings.
+- Keep Awake closed-lid mode now handles failed password-free setup more clearly
+  and can fall back to the macOS password prompt when needed.
+- Battery health now follows the same maximum capacity value shown by macOS when
+  that value is available.
+- Monitor text in the panel now has better contrast, with steadier alignment for
+  power and battery rows.
+- Monitor Alerts controls now live in Settings instead of appearing both in
+  Settings and the main panel.
+- Clipboard History's shortcut toggle can now be turned off even when Clipboard
+  History itself is currently disabled.
+- The Network menu bar metric is now better centered and easier to read.
+- The Window Switcher now focuses only the selected browser profile window,
+  including when that selected window is minimized afterward.
+
 ## [3.1.2] - 2026-06-24
 
 ### Summary

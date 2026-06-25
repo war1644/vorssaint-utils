@@ -8,8 +8,10 @@ import SwiftUI
 
 /// "Cleaning mode" temporarily locks the keyboard so the user can wipe it down
 /// without typing gibberish, then restores it on a deliberate gesture. The lock
-/// is a session-level event tap that swallows every key event; the very same tap
-/// watches for the unlock gesture, so there is always a way back.
+/// is a HID-level event tap that swallows key events before the system handles
+/// them, including keyboard system keys such as brightness, media and volume.
+/// The very same tap watches for the unlock gesture, so there is always a way
+/// back.
 ///
 /// Three independent escapes guarantee no one is ever stranded:
 ///   1. press the same key five times in a row (deliberate, unlike random wiping),
@@ -20,6 +22,8 @@ import SwiftUI
 /// tap can't be created, so we never lock the keyboard with no way to unlock it.
 final class CleaningModeManager: ObservableObject {
     static let shared = CleaningModeManager()
+
+    private static let systemDefinedEventType = CGEventType(rawValue: CleaningSystemKeyEvent.systemDefinedEventTypeRawValue)!
 
     @Published private(set) var isActive = false
     /// Consecutive presses of the current key so far (0...unlockThreshold). The
@@ -89,8 +93,9 @@ final class CleaningModeManager: ObservableObject {
         let mask = (1 << CGEventType.keyDown.rawValue)
             | (1 << CGEventType.keyUp.rawValue)
             | (1 << CGEventType.flagsChanged.rawValue)
+            | (1 << Self.systemDefinedEventType.rawValue)
         guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
+            tap: .cghidEventTap,
             place: .headInsertEventTap,
             options: .defaultTap,
             eventsOfInterest: CGEventMask(mask),
@@ -133,18 +138,32 @@ final class CleaningModeManager: ObservableObject {
         if type == .keyDown {
             let code = event.getIntegerValueField(.keyboardEventKeycode)
             let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
-            let unlocked = unlock.registerKeyDown(code: code,
-                                                  time: ProcessInfo.processInfo.systemUptime,
-                                                  isRepeat: isRepeat)
-            unlockProgress = unlock.progress
-            if unlocked {
-                // Defer so we don't tear down the tap from inside its own callback.
-                DispatchQueue.main.async { [weak self] in self?.deactivate() }
-            }
+            registerUnlockKeyDown(code: code, isRepeat: isRepeat)
+        } else if type == Self.systemDefinedEventType,
+                  let systemKey = systemKeyEvent(from: event),
+                  systemKey.isKeyDown {
+            registerUnlockKeyDown(code: systemKey.code, isRepeat: systemKey.isRepeat)
         }
 
         // Swallow every key event while the lock is on.
         return nil
+    }
+
+    private func systemKeyEvent(from event: CGEvent) -> CleaningSystemKeyEvent? {
+        guard let nsEvent = NSEvent(cgEvent: event) else { return nil }
+        return CleaningSystemKeyEvent.decode(subtype: Int(nsEvent.subtype.rawValue),
+                                             data1: nsEvent.data1)
+    }
+
+    private func registerUnlockKeyDown(code: Int64, isRepeat: Bool) {
+        let unlocked = unlock.registerKeyDown(code: code,
+                                              time: ProcessInfo.processInfo.systemUptime,
+                                              isRepeat: isRepeat)
+        unlockProgress = unlock.progress
+        if unlocked {
+            // Defer so we don't tear down the tap from inside its own callback.
+            DispatchQueue.main.async { [weak self] in self?.deactivate() }
+        }
     }
 
     // MARK: - Overlay

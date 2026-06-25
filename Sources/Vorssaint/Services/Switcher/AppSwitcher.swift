@@ -7,6 +7,13 @@ import Combine
 import CoreGraphics
 import SwiftUI
 
+private struct SwitcherSourceContext {
+    let itemID: String?
+    let pid: pid_t
+    let windowID: CGWindowID?
+    let isFullscreen: Bool
+}
+
 /// The window switcher: a global event tap takes over the configured shortcut,
 /// and while its modifiers are held a non-activating panel cycles through real
 /// windows. Releasing commits, Q quits the highlighted app, Esc cancels. The
@@ -42,6 +49,7 @@ final class AppSwitcher: ObservableObject {
     /// The on-screen window when the current session opened — becomes the
     /// second-most-recent window on commit, so a flick toggles straight back.
     private var sessionStartItemID: String?
+    private var sessionSourceContext: SwitcherSourceContext?
     private var sessionShortcut: GlobalShortcut?
 
     // Virtual key codes handled during a session.
@@ -197,7 +205,8 @@ final class AppSwitcher: ObservableObject {
 
         let list = orderedForSession(windows)
         self.windows = list
-        sessionStartItemID = currentItemID(in: list)
+        sessionSourceContext = sourceContext(in: list)
+        sessionStartItemID = sessionSourceContext?.itemID ?? currentItemID(in: list)
         grid = SwitcherGrid.compute(count: list.count, on: NSScreen.withMouse)
         previews = Dictionary(uniqueKeysWithValues: list.compactMap { item in
             item.previewWindowID.flatMap { id in
@@ -248,7 +257,8 @@ final class AppSwitcher: ObservableObject {
     /// focused window so the first ⌘Tab never targets the window the user is
     /// already in when the frontmost app has more than one window.
     private func currentItemID(in items: [SwitcherItem]) -> String? {
-        let frontPid = AppActivationTracker.shared.frontmostPid
+        let frontPid = NSWorkspace.shared.frontmostApplication?.processIdentifier
+            ?? AppActivationTracker.shared.frontmostPid
         if let frontPid,
            let focusedID = focusedWindowID(for: frontPid),
            items.contains(where: { $0.windowID == focusedID }) {
@@ -256,6 +266,25 @@ final class AppSwitcher: ObservableObject {
         }
         let current = items.first { frontPid == nil || $0.pid == frontPid }
         return current?.id ?? items.first?.id
+    }
+
+    private func sourceContext(in items: [SwitcherItem]) -> SwitcherSourceContext? {
+        guard let frontPid = NSWorkspace.shared.frontmostApplication?.processIdentifier
+                ?? AppActivationTracker.shared.frontmostPid else { return nil }
+
+        let focusedID = focusedWindowID(for: frontPid)
+        let source = items.first { item in
+            guard item.pid == frontPid else { return false }
+            if let focusedID {
+                return item.windowID == focusedID
+            }
+            return true
+        } ?? items.first { $0.pid == frontPid }
+
+        return SwitcherSourceContext(itemID: source?.id,
+                                     pid: frontPid,
+                                     windowID: focusedID ?? source?.windowID,
+                                     isFullscreen: source?.isFullscreen ?? false)
     }
 
     private func focusedWindowID(for pid: pid_t) -> CGWindowID? {
@@ -406,13 +435,14 @@ final class AppSwitcher: ObservableObject {
     func commitSession() {
         guard sessionActive else { return }
         let selection = windows.indices.contains(selectedIndex) ? windows[selectedIndex] : nil
-        let source = windows.first { $0.id == sessionStartItemID }
+        let source = sessionSourceContext
         endSession()
         if let selection {
             recordUse(selection.id)
             WindowActivator.activate(selection,
                                      sourceWasFullscreen: source?.isFullscreen ?? false,
-                                     sourcePID: source?.pid)
+                                     sourcePID: source?.pid,
+                                     sourceWindowID: source?.isFullscreen == true ? nil : source?.windowID)
         }
     }
 
@@ -434,6 +464,7 @@ final class AppSwitcher: ObservableObject {
         hoverAnchor = nil
         userNavigated = false
         sessionStartItemID = nil
+        sessionSourceContext = nil
         sessionShortcut = nil
     }
 

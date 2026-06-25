@@ -70,6 +70,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         WindowLayoutService.shared.syncWithPreferences()
         ClipboardHistoryService.shared.syncWithPreferences()
         MonitorAlertService.shared.start()
+        MaxCapacityProbe.shared.refreshIfStale()
         AudioInputDeviceManager.shared.start()
         AppVolumeMixer.shared.start()
         SoundOutputSwitcher.shared.syncWithPreferences()
