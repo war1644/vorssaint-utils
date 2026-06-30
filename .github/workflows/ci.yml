@@ -22,7 +22,7 @@ jobs:
         run: ./Tools/ci-setup-signing.sh
 
       - name: Build
-        run: ./build.sh
+        run: ./build.sh --universal
 
       - name: Selftest
         run: ./build/Vorssaint --selftest
