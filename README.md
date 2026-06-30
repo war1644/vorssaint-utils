@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/vorssaint/vorssaint-utils/releases"><img src="https://img.shields.io/github/v/release/vorssaint/vorssaint-utils?label=release" alt="Latest release"></a>
   <a href="https://github.com/vorssaint/vorssaint-utils/actions/workflows/ci.yml"><img src="https://github.com/vorssaint/vorssaint-utils/actions/workflows/ci.yml/badge.svg?branch=main&event=push" alt="CI status"></a>
-  <a href="#what-you-need"><img src="https://img.shields.io/badge/macOS-14%2B%20(Apple%20Silicon)-black" alt="macOS 14 and newer, Apple Silicon"></a>
+  <a href="#what-you-need"><img src="https://img.shields.io/badge/macOS-14%2B%20(Apple%20Silicon%20%26%20Intel)-black" alt="macOS 14 and newer, Apple Silicon and Intel"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL%203.0%20or%20later-blue" alt="License GPL 3.0 or later"></a>
 </p>
 
@@ -105,7 +105,7 @@ Finder cut and paste, the uninstaller and Homebrew's Terminal handoff can also a
 
 ## What you need
 
-- A Mac with Apple Silicon
+- A Mac with Apple Silicon or Intel
 - macOS 14 Sonoma or newer
 - Xcode Command Line Tools, only if you build it yourself
 

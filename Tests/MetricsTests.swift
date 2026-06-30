@@ -345,6 +345,34 @@ struct MetricsTests {
                "Apple M5 uses the mapped CPU core sensor set")
         expect(TemperatureSensorSelector.platform(brandString: "Apple M10") == .generic,
                "future unmapped Apple Silicon generations keep the generic CPU sensor path")
+        expect(TemperatureSensorSelector.platform(brandString: "Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz") == .intelMac,
+               "Intel Core brand maps to intelMac platform")
+        expect(TemperatureSensorSelector.platform(brandString: "Intel(R) Xeon(R) W-2140B CPU @ 3.20GHz") == .intelMac,
+               "Intel Xeon brand maps to intelMac platform")
+        expect(TemperatureSensorSelector.platform(brandString: "Apple M1") != .intelMac,
+               "Apple Silicon brands never resolve to intelMac")
+        let intelCPU = TemperatureSensorSelector.displayedCPUTemperature(
+            readings: [("TC0P", 52.0), ("TC0E", 49.0), ("TW0P", 75.0)],
+            platform: .intelMac
+        )
+        expectClose(intelCPU ?? -1, 52.0, "Intel CPU uses hottest mapped TC core (TC0P/TC0E)")
+        let intelMultiCPU = TemperatureSensorSelector.displayedCPUTemperature(
+            readings: [("TC1C", 60.0), ("TC2C", 70.0), ("TC0P", 55.0), ("TCSA", 80.0)],
+            platform: .intelMac
+        )
+        expectClose(intelMultiCPU ?? -1, 70.0, "Intel CPU picks the hottest of any mapped TC core across generations")
+        expect(TemperatureSensorSelector.isCPUCoreKey("TC0P", platform: .intelMac),
+               "Intel TC keys are recognized as CPU cores on intelMac platform")
+        expect(!TemperatureSensorSelector.isCPUCoreKey("TC0P", platform: .appleM1Family),
+               "Intel TC keys are NOT recognized as CPU cores on Apple Silicon platforms")
+        expect(TemperatureSensorSelector.cpuKeyPrefixes(for: .intelMac) == ["TC"],
+               "Intel platform uses the TC prefix family for SMC key collection")
+        expect(TemperatureSensorSelector.cpuKeyPrefixes(for: .appleM3Family).contains("Tf"),
+               "Apple Silicon platforms also discover the Tf family introduced on M3")
+        expect(TemperatureSensorSelector.gpuKeyPrefix(for: .intelMac) == "TG",
+               "Intel platform uses uppercase TG for GPU keys (case sensitive)")
+        expect(TemperatureSensorSelector.gpuKeyPrefix(for: .appleM3Family) == "Tg",
+               "Apple Silicon uses lowercase Tg for GPU keys (case sensitive)")
         let m1CPU = TemperatureSensorSelector.displayedCPUTemperature(
             readings: [("Tp09", 43.0), ("Tp01", 49.0), ("Tp02", 70.0)],
             platform: .appleM1Family

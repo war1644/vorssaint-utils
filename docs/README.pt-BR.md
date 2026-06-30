@@ -169,7 +169,7 @@ cd vorssaint-utils
 
 ### Requisitos
 - macOS 14 (Sonoma) ou mais recente
-- Apple Silicon
+- Apple Silicon or Intel
 - Xcode Command Line Tools (para compilar)
 
 ## Permissões
