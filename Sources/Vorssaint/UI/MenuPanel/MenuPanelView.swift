@@ -1062,7 +1062,7 @@ struct QuickControlsSection: View {
         if !permissions.accessibility {
             return missingPermission(l10n.s.permissionAccessibility)
         }
-        return CleaningModeManager.shared.statusText(l10n.s)
+        return l10n.s.keyboardCleaningCaption
     }
 
     private var cleaningNeedsAttention: Bool {
