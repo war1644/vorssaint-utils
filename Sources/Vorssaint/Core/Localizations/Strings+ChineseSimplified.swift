@@ -159,7 +159,7 @@ extension Strings {
         switcherMergeTabsCaption: "将一个 App 的所有窗口合并为切换器中的一项，而不是每个窗口一项。",
         switcherShowFinder: "无窗口时显示访达",
         switcherShowFinderCaption: "即使没有打开的访达窗口，也在切换器中显示访达。",
-        dockPreviewName: "Dock Preview",
+        dockPreviewName: "Dock 窗口预览",
         dockPreviewEnable: "在 Dock 中预览窗口",
         dockPreviewEnableCaption: "将指针悬停在 Dock 中已打开的 App 上，即可查看并临时显示它的窗口。",
         dockPreviewActiveNow: "已在 Dock 中启用",
@@ -179,7 +179,7 @@ extension Strings {
         dockPreviewIntroPeek: "将指针悬停在缩略图上可临时查看。点按即可打开该窗口。",
         dockPreviewIntroSettingsHint: "你之后可以在设置 › Switcher 中更改。",
         dockPreviewIntroLater: "暂不启用",
-        dockPreviewIntroEnable: "启用 Dock Preview",
+        dockPreviewIntroEnable: "启用 Dock 窗口预览",
         dockPreviewIntroMagnificationAction: "请关闭 Dock 放大后再启用。",
 
         cutPasteName: "剪切和粘贴",
