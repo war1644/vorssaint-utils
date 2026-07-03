@@ -623,12 +623,15 @@ final class SystemMonitor: ObservableObject {
         tempKeysPrepared = true
         guard let client = smc else { return }
 
+        let cpuPrefixes = TemperatureSensorSelector.cpuKeyPrefixes(for: cpuTemperaturePlatform)
+        let gpuPrefix = TemperatureSensorSelector.gpuKeyPrefix(for: cpuTemperaturePlatform)
         let all = client.keys { name in
-            name.hasPrefix("Tp") || name.hasPrefix("Te") || name.hasPrefix("Tg")
+            cpuPrefixes.contains(where: name.hasPrefix)
+                || name.hasPrefix(gpuPrefix)
                 || name.range(of: "^TB[0-9]T$", options: .regularExpression) != nil
         }
-        cpuKeys = all.filter { $0.name.hasPrefix("Tp") || $0.name.hasPrefix("Te") }
-        gpuKeys = all.filter { $0.name.hasPrefix("Tg") }
+        cpuKeys = all.filter { cpuPrefixes.contains(where: $0.name.hasPrefix) }
+        gpuKeys = all.filter { $0.name.hasPrefix(gpuPrefix) }
         batteryKeys = all.filter { $0.name.hasPrefix("TB") }
     }
 

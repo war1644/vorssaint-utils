@@ -12,16 +12,31 @@ cd "$(dirname "$0")"
 
 # Flags: --dev builds the local-only "Vorssaint (Developer)" variant (its own
 # bundle id, so it coexists with the official app); --install puts it in /Applications.
+# --universal compiles both arm64 and x86_64 and lipos them together; --arm64 and
+# --x86_64 force a single architecture, otherwise the host arch is picked.
 DEV=0
 INSTALL=0
 TEST=0
+UNIVERSAL=0
+ARCH=""
 for arg in "$@"; do
     case "$arg" in
-        --dev)     DEV=1 ;;
-        --install) INSTALL=1 ;;
-        --test)    TEST=1 ;;
+        --dev)       DEV=1 ;;
+        --install)   INSTALL=1 ;;
+        --test)      TEST=1 ;;
+        --universal) UNIVERSAL=1 ;;
+        --arm64)     ARCH="arm64" ;;
+        --x86_64)    ARCH="x86_64" ;;
     esac
 done
+
+if (( UNIVERSAL )) && [[ -n "$ARCH" ]]; then
+    echo "▸ --universal cannot be combined with --arm64 or --x86_64" >&2
+    exit 2
+fi
+if [[ -z "$ARCH" ]]; then
+    ARCH="$(uname -m)"
+fi
 
 if (( DEV )); then
     APP_NAME="Vorssaint (Developer)"
@@ -30,7 +45,11 @@ else
     APP_NAME="Vorssaint"
     EXECUTABLE="Vorssaint"
 fi
-TARGET="arm64-apple-macosx14.0"
+case "$ARCH" in
+    arm64)   TARGET="arm64-apple-macosx14.0" ;;
+    x86_64)  TARGET="x86_64-apple-macosx14.0" ;;
+    *)       echo "▸ Unsupported architecture: $ARCH (use --arm64 or --x86_64)" >&2; exit 2 ;;
+esac
 ENTITLEMENTS="Resources/Vorssaint.entitlements"
 LEGACY_IDENTITY="Vorssaint Utils Signing"
 
@@ -120,9 +139,22 @@ fi
 echo "▸ Compiling (release) against $(basename "$SDK")…"
 rm -rf build
 mkdir -p build
-swiftc -O -target "$TARGET" -sdk "$SDK" \
-    Sources/Vorssaint/**/*.swift \
-    -o "build/$EXECUTABLE"
+if (( UNIVERSAL )); then
+    swiftc -O -target arm64-apple-macosx14.0 -sdk "$SDK" \
+        Sources/Vorssaint/**/*.swift \
+        -o "build/$EXECUTABLE.arm64"
+    swiftc -O -target x86_64-apple-macosx14.0 -sdk "$SDK" \
+        Sources/Vorssaint/**/*.swift \
+        -o "build/$EXECUTABLE.x86_64"
+    lipo -create \
+        "build/$EXECUTABLE.arm64" "build/$EXECUTABLE.x86_64" \
+        -output "build/$EXECUTABLE"
+    rm "build/$EXECUTABLE.arm64" "build/$EXECUTABLE.x86_64"
+else
+    swiftc -O -target "$TARGET" -sdk "$SDK" \
+        Sources/Vorssaint/**/*.swift \
+        -o "build/$EXECUTABLE"
+fi
 
 echo "▸ Generating app icon…"
 swift Tools/MakeIcon.swift build/AppIcon.iconset

@@ -10,6 +10,14 @@ enum CPUTemperaturePlatform: Equatable {
     case appleM3Family
     case appleM4Family
     case appleM5Family
+    /// Last-generation Intel Mac (Skylake / Coffee Lake / Comet Lake / Ice Lake and
+    /// Xeon W). Die temperatures are exposed through SMC keys with a `TC` prefix,
+    /// unlike Apple Silicon's `Tp` / `Te` / `Tf` family. Selection is coarser than
+    /// the per-generation Apple Silicon tables because Intel Macs span many models.
+    case intelMac
+    /// Anything we cannot classify: VMs, emulators, future unmapped hardware.
+    /// Falls back to "hottest plausible reading" — same behavior the project has
+    /// always used for unmapped Apple Silicon generations.
     case generic
 }
 
@@ -47,16 +55,35 @@ enum TemperatureSensorSelector {
         "Tp0m", "Tp0p", "Tp0u", "Tp0y",
     ]
 
+    /// Intel CPU die-temperature keys. The first two (TC0P / TC0E) are the package
+    /// proximity and hottest-core sensors on virtually every Intel Mac that runs
+    /// macOS 14 (Mac Pro 2019, iMac Pro, iMac 2020, MacBook Pro 2019-2020,
+    /// MacBook Air 2018-2020). Per-core TCnC / TCnP keys vary across generations;
+    /// we accept a broad range and let `displayedCPUTemperature` take the max of
+    /// the mapped ones, which matches what Activity Monitor shows.
+    private static let intelCPUCoreKeys: Set<String> = [
+        "TC0P", "TC0E", "TC0D",
+        "TC1C", "TC2C", "TC3C", "TC4C",
+        "TC5C", "TC6C", "TC7C", "TC8C",
+        "TC9C", "TCAC", "TCBC",
+    ]
+
     static func platform(brandString: String?) -> CPUTemperaturePlatform {
         let brand = brandString?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        switch appleSiliconGeneration(in: brand) {
-        case 1: return .appleM1Family
-        case 2: return .appleM2Family
-        case 3: return .appleM3Family
-        case 4: return .appleM4Family
-        case 5: return .appleM5Family
-        default: return .generic
+        if let generation = appleSiliconGeneration(in: brand) {
+            switch generation {
+            case 1: return .appleM1Family
+            case 2: return .appleM2Family
+            case 3: return .appleM3Family
+            case 4: return .appleM4Family
+            case 5: return .appleM5Family
+            default: return .generic
+            }
         }
+        if isIntelMac(brand: brand) {
+            return .intelMac
+        }
+        return .generic
     }
 
     static func currentPlatform() -> CPUTemperaturePlatform {
@@ -85,7 +112,7 @@ enum TemperatureSensorSelector {
 
     static func hasCPUCoreSet(platform: CPUTemperaturePlatform) -> Bool {
         switch platform {
-        case .appleM1Family, .appleM2Family, .appleM3Family, .appleM4Family, .appleM5Family:
+        case .appleM1Family, .appleM2Family, .appleM3Family, .appleM4Family, .appleM5Family, .intelMac:
             return true
         case .generic: return false
         }
@@ -103,8 +130,35 @@ enum TemperatureSensorSelector {
             return appleM4CPUCoreKeys.contains(key)
         case .appleM5Family:
             return appleM5CPUCoreKeys.contains(key)
+        case .intelMac:
+            return intelCPUCoreKeys.contains(key)
         case .generic:
             return false
+        }
+    }
+
+    /// SMC key prefix used to collect CPU die-temperature sensors. Apple Silicon
+    /// spreads them across `Tp` (performance), `Te` (efficiency) and `Tf` (M3+).
+    /// Intel Macs use a single `TC` family (TC0P / TC0E / TCnC / …).
+    static func cpuKeyPrefixes(for platform: CPUTemperaturePlatform) -> [String] {
+        switch platform {
+        case .intelMac:
+            return ["TC"]
+        case .appleM1Family, .appleM2Family, .appleM3Family, .appleM4Family, .appleM5Family, .generic:
+            return ["Tp", "Te", "Tf"]
+        }
+    }
+
+    /// SMC key prefix used to collect GPU temperature sensors. Apple Silicon's
+    /// AGXAccelerator exposes `Tg…` (lowercase g); Intel integrated graphics and
+    /// AMD Radeon Pro on Intel Macs use `TG…` (uppercase G). SMC keys are case
+    /// sensitive, so both prefixes must be tried when the platform is unknown.
+    static func gpuKeyPrefix(for platform: CPUTemperaturePlatform) -> String {
+        switch platform {
+        case .intelMac:
+            return "TG"
+        case .appleM1Family, .appleM2Family, .appleM3Family, .appleM4Family, .appleM5Family, .generic:
+            return "Tg"
         }
     }
 
@@ -116,6 +170,13 @@ enum TemperatureSensorSelector {
         let afterGeneration = remainder.dropFirst()
         guard afterGeneration.isEmpty || afterGeneration.first == " " else { return nil }
         return generation
+    }
+
+    /// Intel Mac `machdep.cpu.brand_string` always starts with `Intel(R) Core(TM)`
+    /// or `Intel(R) Xeon(R)` and never with `Apple`. We accept a loose match so the
+    /// detector is robust against minor formatting changes across macOS versions.
+    private static func isIntelMac(brand: String) -> Bool {
+        brand.localizedCaseInsensitiveContains("intel")
     }
 
     private static func isPlausibleTemperature(_ value: Double) -> Bool {

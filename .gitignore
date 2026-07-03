@@ -24,3 +24,6 @@ E2E/
 *.xcodeproj
 xcuserdata/
 .swiftpm/
+
+# AI Agent
+.harness/
